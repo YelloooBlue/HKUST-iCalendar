@@ -8,20 +8,44 @@
     <style>
         body {
             font-family: Arial, sans-serif;
+            background-color: #f9f9f9;
+            color: #333;
             max-width: 800px;
             margin: 0 auto;
             padding: 20px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #4CAF50;
         }
 
         textarea {
             width: 100%;
             height: 300px;
             margin-bottom: 10px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 16px;
+            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
         }
 
         button {
+            background-color: #4CAF50;
+            color: white;
             padding: 10px 20px;
             font-size: 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #45a049;
         }
 
         ul {
@@ -30,10 +54,42 @@
         }
 
         li {
-            background-color: #f0f0f0;
-            margin: 5px 0;
-            padding: 10px;
+            background-color: #ffffff;
+            margin: 10px 0;
+            /* 增加上下间距 */
+            padding: 15px;
             border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        li strong {
+            color: #333;
+            font-size: 18px;
+            /* 增加字体大小 */
+        }
+
+        .course-info {
+            margin: 5px 0;
+            /* 增加信息之间的间距 */
+        }
+
+        .course-id {
+            color: #007BFF;
+            /* 使用蓝色区分课程ID */
+        }
+
+        .course-type {
+            color: #FF5722;
+            /* 使用橙色区分课程类型 */
+        }
+
+        .course-time {
+            color: #FFC107;
+            /* 使用黄色区分时间 */
+        }
+
+        li br {
+            margin: 5px 0;
         }
     </style>
 </head>
@@ -46,6 +102,18 @@
     <ul id="courseList"></ul>
 
     <script>
+        // 星期几的映射
+        const dayMap = {
+            "Mo": 1,
+            "Tu": 2,
+            "We": 3,
+            "Th": 4,
+            "Fr": 5,
+            "Sa": 6,
+            "Su": 0
+        };
+
+
         function extractCourses() {
             var input = document.getElementById('inputText').value;
             var courseList = document.getElementById('courseList');
@@ -96,11 +164,18 @@
 
                 // 3.1.解析课程 ‘Days & Times’ 字段，如果有多个class则多次添加到列表
                 var schedules = parseSchedule(classInfo.schedule);
-                // 3.2.解析课程 ‘Start/End Date’ 字段
-                var dates = parseDates(classInfo.dates);
+
 
                 schedules.forEach(function (schedule) {
-                    addCourseToList(Object.assign({}, baseInfo, classInfo, schedule, dates)); // 合并对象
+                    // 3.2.解析课程 ‘Start/End Date’ 字段
+                    var dates = parseDates(classInfo.dates);
+                    // 3.3.计算要上几节课
+                    var classCount = calculateClasses(dates.start, dates.end, schedule.day);
+                    // 3.4.计算第一节课的具体日期和时间（开始和结束）
+                    var firstClass = calculateFirstClassDate(dates.start, schedule.day, schedule.time);
+
+
+                    addCourseToList(Object.assign({}, baseInfo, classInfo, schedule, dates, { classCount: classCount }, { firstClass: firstClass }));
                 });
 
 
@@ -131,44 +206,75 @@
             var currentClass = { classNbr: null, section: null, component: null, schedule: null, room: null, instructors: [], dates: null };
             var lastClass = currentClass;
 
+            // 状态机
+            var currentKeyIndex = 0;
+            var keys = Object.keys(currentClass);
+
             lines.forEach(function (line) {
 
                 // 由于课程信息的格式不固定，所以要小心处理
                 // 当某个参数为空时（classNbr也有可能为空），使用上一个class的参数（TODO）
                 // 我们可以通过检测日期是否存在来判断是否完成了一个class的提取
 
-                
-                if (!currentClass.classNbr) {
-                    currentClass.classNbr = line.trim() || lastClass.classNbr;
+
+                //逐个提取class信息
+                if (currentKeyIndex < keys.length) {
+
+                    var key = keys[currentKeyIndex];
+                    var value = line.trim();
+
+                    // 特殊处理
+                    if (key === 'instructors' && !value.includes('-')) {
+                        currentClass.instructors.push(value.replace(/,$/, ''));//去掉末尾逗号
+                    }
+
+                    // 如果正则匹配到日期（ 'dd/mm/yyyy - dd/mm/yyyy' ），则表示当前class提取完成
+                    else if (value.match(/\d{2}\/\d{2}\/\d{4}\s-\s\d{2}\/\d{2}\/\d{4}/)) {
+                        currentClass.dates = value.trim();
+                        classes.push(currentClass);
+                        lastClass = currentClass;
+                        currentClass = { classNbr: null, section: null, component: null, schedule: null, room: null, instructors: [], dates: null };
+                        currentKeyIndex = 0;
+                    }
+
+                    // 其他普通字段
+                    else {
+                        currentClass[keys[currentKeyIndex]] = line.trim() || lastClass[keys[currentKeyIndex]];
+                        currentKeyIndex++;
+                    }
                 }
 
-                else if (!currentClass.section) {
-                    currentClass.section = line.trim() || lastClass.section;
-                }
+                // if (!currentClass.classNbr) {
+                //     currentClass.classNbr = line || lastClass.classNbr;
+                // }
 
-                else if (!currentClass.component) {
-                    currentClass.component = line.trim() || lastClass.component;
-                }
+                // else if (!currentClass.section) {
+                //     currentClass.section = line || lastClass.section;
+                // }
 
-                else if (!currentClass.schedule) {
-                    currentClass.schedule = line.trim() || lastClass.schedule
-                }
+                // else if (!currentClass.component) {
+                //     currentClass.component = line || lastClass.component;
+                // }
 
-                else if (!currentClass.room) {
-                    currentClass.room = line.trim() || lastClass.room;
-                }
+                // else if (!currentClass.schedule) {
+                //     currentClass.schedule = line || lastClass.schedule;
+                // }
 
-                else if (!line.includes('-')) {
-                    currentClass.instructors.push(line.trim().replace(/,$/, ''));//去掉末尾逗号
-                }
+                // else if (!currentClass.room) {
+                //     currentClass.room = line || lastClass.room;
+                // }
 
-                // 如果日期存在，则表示当前class提取完成
-                else if (line.includes('-')) {
-                    currentClass.dates = line;
-                    classes.push(currentClass);
-                    lastClass = currentClass;
-                    currentClass = { classNbr: null, section: null, component: null, schedule: null, room: null, instructors: [], dates: null };
-                }
+                // else if (!line.includes('-')) {
+                //     currentClass.instructors.push(line.trim().replace(/,$/, ''));//去掉末尾逗号
+                // }
+
+                // // 如果日期存在，则表示当前class提取完成
+                // else if (line.includes('-')) {
+                //     currentClass.dates = line.trim();
+                //     classes.push(currentClass);
+                //     lastClass = currentClass;
+                //     currentClass = { classNbr: null, section: null, component: null, schedule: "", room: null, instructors: [], dates: null };
+                // }
             });
             return classes;
         }
@@ -180,25 +286,29 @@
             console.log("scheduleString: ", scheduleString);
 
             if (!scheduleString || scheduleString === '') {
-                return [{ day: 'N/A', time: 'N/A' }];
+                return [{ day: 'N/A', time: { start: 'N/A', end: 'N/A' } }];
             }
 
             var parts = scheduleString.split(' ');
-            var days = parts[0];
-            var time = parts.slice(1).join(' ');
 
+            var days = parts[0];
             // 如果有多个'星期几'，则分割
             var daysList = [];
             for (var i = 0; i < days.length; i += 2) {
                 daysList.push(days.substr(i, 2));
             }
 
+            var time = parts.slice(1).join(' ');
+            // 提取开始时间和结束时间
+            var startTime = time.split('-')[0];
+            var endTime = time.split('-')[1];
+
+
             return daysList.map(function (day) {
-                return { day: day, time: time };
+                return { day: day, time: { start: startTime, end: endTime } };
             });
         }
 
-        //【函数】解析课程 ‘Instructor’ 字段
 
 
         //【函数】解析课程 ‘Start/End Date’ 字段
@@ -208,39 +318,77 @@
             }
 
             var parts = datesString.split(' - ');
-            return { start: parts[0], end: parts[1] };
+            //转化为日期格式
+            console.log("parts: ", parts); //格式为 dd/mm/yyyy
+            var start = new Date(parts[0].split('/').reverse().join('-'));
+            var end = new Date(parts[1].split('/').reverse().join('-'));
+
+
+            return { start: start, end: end };
         }
+
+        //【扩展函数】计算要上几节课
+        function calculateClasses(start, end, dayOfWeek) {
+
+            // 确保结束日期在开始日期之后
+            if (end < start) {
+                return 0; // 如果结束日期早于开始日期，返回0
+            }
+
+
+
+            if (!dayMap[dayOfWeek]) {
+                return -1; // 如果星期几不在映射中，返回0
+            }
+
+            let classCount = 0;
+
+            // 遍历从开始日期到结束日期的每一天
+            for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+                // 检查当前日期的星期几是否在上课的日子中
+                if (d.getDay() === dayMap[dayOfWeek]) {
+                    classCount++;
+                }
+            }
+
+            return classCount;
+        }
+
+        //【扩展函数】计算第一节课的具体日期和时间（开始和结束）
+        function calculateFirstClassDate(start, dayOfWeek, time) {
+
+            if (!dayMap[dayOfWeek]) {
+                return null; // 如果星期几不在映射中，返回null
+            }
+
+            // 找到第一个星期几的日期
+            for (let d = new Date(start);; d.setDate(d.getDate() + 1)) {
+                if (d.getDay() === dayMap[dayOfWeek]) {
+                    // 找到第一个星期几的日期后，加上时间
+                    let startTime = new Date(d.toDateString() + ' ' + time.start);
+                    let endTime = new Date(d.toDateString() + ' ' + time.end);
+                    return { start: startTime, end: endTime };
+                }
+            }
+        }
+
 
         //【渲染】添加课程到列表
         function addCourseToList(courseInfo) {
             var li = document.createElement('li');
 
             li.innerHTML = `
-                <strong>${courseInfo.code} - ${courseInfo.name} ${courseInfo.section}</strong><br>
-                课程ID: ${courseInfo.classNbr}<br>
-                类型: ${courseInfo.component}<br>
-                时间: ${courseInfo.day} ${courseInfo.time}<br>
+                <strong>${courseInfo.code} - ${courseInfo.name}(${courseInfo.section})</strong><br>
+                <span class="course-id">课程ID: ${courseInfo.classNbr}</span><br>
+                <span class="course-type">类型: ${courseInfo.component}</span><br>
+                <span class="course-time">时间: ${courseInfo.day} ${courseInfo.time.start} - ${courseInfo.time.end}</span><br>
                 地点: ${courseInfo.room}<br>
                 教师: ${courseInfo.instructors}<br>
                 开始日期: ${courseInfo.start}<br>
-                结束日期: ${courseInfo.end}
+                结束日期: ${courseInfo.end}<br>
+                第一节课: ${courseInfo.firstClass ? courseInfo.firstClass.start : 'N/A'} - ${courseInfo.firstClass ? courseInfo.firstClass.end : 'N/A'}<br>
+                总共 ${courseInfo.classCount} 节课<br>
             `;
-
-            // li.innerHTML = `
-            //     <strong>${courseInfo.code} - ${courseInfo.name} ${courseInfo.section}</strong><br>
-            //     ClassID: ${courseInfo.classNbr}<br>
-            //     Component: ${courseInfo.component}<br>
-            //     Schedule: ${courseInfo.day}<br>
-            //     Time: ${courseInfo.time}<br>
-            //     Room: ${courseInfo.room}<br>
-            //     Instructor(s): ${courseInfo.instructor ? courseInfo.instructor : ''}<br>
-            //     Dates: ${courseInfo.dates}
-            // `;
-
-            /*
-                Units: ${courseInfo.units}<br>
-                Grading: ${courseInfo.grading}<br>
-            */
 
             document.getElementById('courseList').appendChild(li);
         }
