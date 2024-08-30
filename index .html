@@ -118,8 +118,6 @@
 
         var courseList = [];
 
-
-
         //========================================================================================================
 
         class Event {
@@ -204,64 +202,28 @@
                 tmp.location = aClass.room;
                 tmp.uid = `${x}-${aClass.classNbr}`;
 
-                if (aClass.classCount > 1) {
-                    tmp.repeat = true;
-                    tmp.repeatRule = `FREQ=WEEKLY;COUNT=${aClass.classCount}`;
-                }
+                // TODO: 现在是默认所有课程都是每周重复的，如果有需要可以添加更多的重复规则
+                tmp.repeat = true;
+                tmp.repeatRule = `FREQ=WEEKLY;UNTIL=${formatDate(aClass.end)}T235959Z;BYDAY=${convertDays2RRULE(aClass.days)}`;
 
                 tmp.startTime = `TZID=Asia/Shanghai:${formatDate(aClass.firstClass.start)}T${formatTime(aClass.firstClass.start)}`;
                 tmp.endTime = `TZID=Asia/Shanghai:${formatDate(aClass.firstClass.end)}T${formatTime(aClass.firstClass.end)}`;
-                aCalendar.eventList.push(tmp);
 
-                // for (const [x, aClass] of Object.entries(classInfo)) {
-                //     let newClassName = aClass.kc_name;
-                //     if (aClass.arrange_num !== 1) {
-                //         newClassName += `(${aClass.xslx_name1})`;
-                //     }
-                //     if (aClass.fzmc_name) {
-                //         newClassName += `[${aClass.fzmc_name}]`;
-                //     }
-                //     const weekRangeList = aClass.pkzc.split(',');
-                //     for (const [n, aRange] of Object.entries(weekRangeList)) {
-                //         const tmp = new Event();
-                //         tmp.title = newClassName;
-                //         tmp.description = `${aClass.teachernames} | ${aClass.ktmc_name}`;
-                //         tmp.location = aClass.js_name;
-                //         tmp.uid = `${aClass.id}-${n}`;
-                //         let weekStartTime = null;
-                //         if (aRange.includes('-')) {
-                //             tmp.repeat = true;
-                //             const [startWeek, endWeek] = aRange.split('-').map(Number);
-                //             let repeatRule = '';
-                //             if (aClass.sjbzcode == 1) {
-                //                 repeatRule = `FREQ=WEEKLY;COUNT=${endWeek - startWeek + 1};INTERVAL=1`;
-                //             }
-                //             else if (aClass.sjbzcode == 2) {
-                //                 const adjustedStartWeek = startWeek % 2 !== 1 ? startWeek + 1 : startWeek;
-                //                 const adjustedEndWeek = endWeek % 2 !== 1 ? endWeek - 1 : endWeek;
-                //                 repeatRule = `FREQ=WEEKLY;COUNT=${((adjustedEndWeek - adjustedStartWeek) / 2) + 1};INTERVAL=2`;
-                //             }
-                //             else if (aClass.sjbzcode == 3) {
-                //                 const adjustedStartWeek = startWeek % 2 !== 0 ? startWeek + 1 : startWeek;
-                //                 const adjustedEndWeek = endWeek % 2 !== 0 ? endWeek - 1 : endWeek;
-                //                 repeatRule = `FREQ=WEEKLY;COUNT=${((adjustedEndWeek - adjustedStartWeek) / 2) + 1};INTERVAL=2`;
-                //             }
-                //             tmp.repeatRule = repeatRule;
-                //             weekStartTime = startTime + (startWeek - 1) * 7 * 24 * 3600;
-                //         } else {
-                //             weekStartTime = startTime + (aRange - 1) * 7 * 24 * 3600;
-                //         }
-                //         const weekDay = aClass.pksj.charAt(0);
-                //         const firstClass = weekStartTime + (weekDay - 1) * 24 * 3600;
-                //         const startTime4Num = aClass.djkssj ? aClass.djkssj.replace(":", "") : aClass.idjkssj.toString().padStart(4, '0');
-                //         const endTime4Num = aClass.djjssj ? aClass.djjssj.replace(":", "") : aClass.idjjssj.toString().padStart(4, '0');
-                //         tmp.startTime = `TZID=Asia/Shanghai:${formatDate(new Date(firstClass * 1000))}T${startTime4Num}00`;
-                //         tmp.endTime = `TZID=Asia/Shanghai:${formatDate(new Date(firstClass * 1000))}T${endTime4Num}00`;
-                //         aCalendar.eventList.push(tmp);
-                //     }
+                // 可以但没必要，降低了可读性
+                // tmp.startTime = `TZID=Asia/Shanghai:${formatDate(aClass.start)}T${formatTime(aClass.time.start)}`;
+                // tmp.endTime = `TZID=Asia/Shanghai:${formatDate(aClass.start)}T${formatTime(aClass.time.end)}`;
+
+                aCalendar.eventList.push(tmp);
             }
 
             return aCalendar.makeICSText();
+        }
+
+
+        //====
+
+        function isDate(obj) {
+            return obj instanceof Date && !isNaN(obj);
         }
 
         function formatDate(date) {
@@ -272,10 +234,29 @@
         }
 
         function formatTime(date) {
-            const hour = String(date.getHours()).padStart(2, '0');
-            const minute = String(date.getMinutes()).padStart(2, '0');
-            const second = String(date.getSeconds()).padStart(2, '0');
-            return `${hour}${minute}${second}`;
+
+            console.log("date: ", date, "typeof date: ", typeof date);
+
+            if (typeof date === 'string') {
+                date = date.trim();
+                if (date === 'N/A') {
+                    return '000000';
+                } else if (date.length === 4) {
+                    return date + '00';
+                } else if (date.length === 5) {
+                    return date.replace(':', '') + '00';
+                }
+            }
+            else if (isDate(date)) {
+                const hour = String(date.getHours()).padStart(2, '0');
+                const minute = String(date.getMinutes()).padStart(2, '0');
+                const second = String(date.getSeconds()).padStart(2, '0');
+                return `${hour}${minute}${second}`;
+            } else {
+                return '000000';
+            }
+
+
         }
 
 
@@ -308,6 +289,9 @@
         }
 
 
+        //====================【Muti-Line Parser】====================
+
+
         /*
         * 课程信息处理函数
         * 1. 提取基本信息（课程代码、课程名称、学分、考核方式）
@@ -315,6 +299,11 @@
         * 3. 提取每个课程 ‘Days & Times’ 字段 (可能有多个时间段)
         * 4. 渲染列表
         */
+
+
+        // 注意：一个Course可能有多个class
+
+        //【Muti-Line Parser】处理Course信息 (0-15+行)
 
         function processCourse(course) {
             var lines = course.lines;
@@ -331,44 +320,22 @@
             classes.forEach(function (classInfo) {
 
                 // 3.1.解析课程 ‘Days & Times’ 字段，如果有多个class则多次添加到列表
-                var schedules = parseSchedule(classInfo.schedule);
+                var schedule = parseSchedule(classInfo.schedule);
 
+                // 3.2.解析课程 ‘Start/End Date’ 字段
+                var dates = parseDates(classInfo.dates);
 
-                schedules.forEach(function (schedule) {
-                    // 3.2.解析课程 ‘Start/End Date’ 字段
-                    var dates = parseDates(classInfo.dates);
-                    // 3.3.计算要上几节课
-                    var classCount = calculateClasses(dates.start, dates.end, schedule.day);
-                    // 3.4.计算第一节课的具体日期和时间（开始和结束）
-                    var firstClass = calculateFirstClassDate(dates.start, schedule.day, schedule.time);
+                // 3.4.计算第一节课的具体日期和时间（开始和结束）
+                var firstClass = calculateFirstClassDate(dates.start, schedule.days, schedule.time);
 
-
-                    addCourseToList(Object.assign({}, baseInfo, classInfo, schedule, dates, { classCount: classCount }, { firstClass: firstClass }));
-                });
-
-
-
+                addCourseToList(Object.assign({}, baseInfo, classInfo, schedule, dates, { firstClass: firstClass }));
 
             });
         }
 
-        //【函数】提取基本信息
-        function extractBaseInfo(lines) {
-            var headerParts = lines[0].split(' - ');
-            var courseInfo = {
-                code: headerParts[0],
-                name: headerParts[1],
-            };
 
-            if (lines[2] !== 'Enrolled') return null;
 
-            courseInfo.units = lines[3];
-            courseInfo.grading = lines[4];
-
-            return courseInfo;
-        }
-
-        //【函数】提取class信息（可能有多个class）
+        //【Muti-Line Parser】提取Class信息 (8-15+行)
         function extractClasses(lines) {
             var classes = [];
             var currentClass = { classNbr: null, section: null, component: null, schedule: null, room: null, instructors: [], dates: null };
@@ -411,75 +378,47 @@
                         currentKeyIndex++;
                     }
                 }
-
-                // if (!currentClass.classNbr) {
-                //     currentClass.classNbr = line || lastClass.classNbr;
-                // }
-
-                // else if (!currentClass.section) {
-                //     currentClass.section = line || lastClass.section;
-                // }
-
-                // else if (!currentClass.component) {
-                //     currentClass.component = line || lastClass.component;
-                // }
-
-                // else if (!currentClass.schedule) {
-                //     currentClass.schedule = line || lastClass.schedule;
-                // }
-
-                // else if (!currentClass.room) {
-                //     currentClass.room = line || lastClass.room;
-                // }
-
-                // else if (!line.includes('-')) {
-                //     currentClass.instructors.push(line.trim().replace(/,$/, ''));//去掉末尾逗号
-                // }
-
-                // // 如果日期存在，则表示当前class提取完成
-                // else if (line.includes('-')) {
-                //     currentClass.dates = line.trim();
-                //     classes.push(currentClass);
-                //     lastClass = currentClass;
-                //     currentClass = { classNbr: null, section: null, component: null, schedule: "", room: null, instructors: [], dates: null };
-                // }
             });
             return classes;
         }
 
+        //====================【Parser】====================
 
-        //【函数】解析课程 ‘Days & Times’ 字段 (可能有多个时间段)
+        //【Parser】提取基本信息
+        function extractBaseInfo(lines) {
+            var headerParts = lines[0].split(' - ');
+            var courseInfo = {
+                code: headerParts[0],
+                name: headerParts[1],
+            };
+
+            if (lines[2] !== 'Enrolled') return null;
+
+            courseInfo.units = lines[3];
+            courseInfo.grading = lines[4];
+
+            return courseInfo;
+        }
+
+        //【Parser】解析课程 ‘Days & Times’ 字段 (可能有多个时间段)
         function parseSchedule(scheduleString) {
 
-            console.log("scheduleString: ", scheduleString);
-
             if (!scheduleString || scheduleString === '') {
-                return [{ day: 'N/A', time: { start: 'N/A', end: 'N/A' } }];
+                return { days: 'N/A', time: { start: 'N/A', end: 'N/A' } };
             }
 
             var parts = scheduleString.split(' ');
 
             var days = parts[0];
-            // 如果有多个'星期几'，则分割
-            var daysList = [];
-            for (var i = 0; i < days.length; i += 2) {
-                daysList.push(days.substr(i, 2));
-            }
 
             var time = parts.slice(1).join(' ');
-            // 提取开始时间和结束时间
             var startTime = time.split('-')[0];
             var endTime = time.split('-')[1];
 
-
-            return daysList.map(function (day) {
-                return { day: day, time: { start: startTime, end: endTime } };
-            });
+            return { days: days, time: { start: startTime, end: endTime } };
         }
 
-
-
-        //【函数】解析课程 ‘Start/End Date’ 字段
+        //【Parser】解析课程 ‘Start/End Date’ 字段
         function parseDates(datesString) {
             if (!datesString || datesString === '') {
                 return { start: 'N/A', end: 'N/A' };
@@ -495,35 +434,14 @@
             return { start: start, end: end };
         }
 
-        //【扩展函数】计算要上几节课
-        function calculateClasses(start, end, dayOfWeek) {
+        //====================【Utils】====================
 
-            // 确保结束日期在开始日期之后
-            if (end < start) {
-                return 0; // 如果结束日期早于开始日期，返回0
-            }
-
-
-
-            if (!dayMap[dayOfWeek]) {
-                return -1; // 如果星期几不在映射中，返回0
-            }
-
-            let classCount = 0;
-
-            // 遍历从开始日期到结束日期的每一天
-            for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-                // 检查当前日期的星期几是否在上课的日子中
-                if (d.getDay() === dayMap[dayOfWeek]) {
-                    classCount++;
-                }
-            }
-
-            return classCount;
-        }
-
-        //【扩展函数】计算第一节课的具体日期和时间（开始和结束）
+        //【Utils】计算第一节课的具体日期和时间（开始和结束）
         function calculateFirstClassDate(start, dayOfWeek, time) {
+
+            if (dayOfWeek.length !== 2) {
+                dayOfWeek = dayOfWeek.slice(0, 2); // 只取前两个字符
+            }
 
             if (!dayMap[dayOfWeek]) {
                 return null; // 如果星期几不在映射中，返回null
@@ -540,6 +458,24 @@
             }
         }
 
+        //【Utils】 将一周上多节课的课程转化为RRULE可以识别的 BYDAY
+        // 例如： MoWeFr -> MO,WE,FR
+        function convertDays2RRULE(inputStr) {
+            let result = [];
+
+            inputStr = inputStr.trim().toUpperCase();
+
+            for (let i = 0; i < inputStr.length; i += 2) {
+                // 获取两个字符并转换为大写
+                const day = inputStr.slice(i, i + 2);
+                result.push(day);
+            }
+
+            return result.join(',');
+        }
+
+        //====================【渲染器】====================
+
 
         //【渲染】添加课程到列表
         function addCourseToList(courseInfo) {
@@ -552,13 +488,12 @@
                 <strong>${courseInfo.code} - ${courseInfo.name}(${courseInfo.section})</strong><br>
                 <span class="course-id">课程ID: ${courseInfo.classNbr}</span><br>
                 <span class="course-type">类型: ${courseInfo.component}</span><br>
-                <span class="course-time">时间: ${courseInfo.day} ${courseInfo.time.start} - ${courseInfo.time.end}</span><br>
+                <span class="course-time">时间: ${courseInfo.days} ${courseInfo.time.start} - ${courseInfo.time.end}</span><br>
                 地点: ${courseInfo.room}<br>
                 教师: ${courseInfo.instructors}<br>
                 开始日期: ${courseInfo.start}<br>
                 结束日期: ${courseInfo.end}<br>
                 第一节课: ${courseInfo.firstClass ? courseInfo.firstClass.start : 'N/A'} - ${courseInfo.firstClass ? courseInfo.firstClass.end : 'N/A'}<br>
-                总共 ${courseInfo.classCount} 节课<br>
             `;
 
             document.getElementById('courseList').appendChild(li);
