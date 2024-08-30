@@ -73,6 +73,7 @@
 <body>
     <h1>HKUST Course Schedule Converter</h1>
     <textarea id="inputText" placeholder="Please paste your course schedule here..."></textarea>
+    <u onclick="showTutorial()" target="_blank">How to get and copy my course schedule?</u><br><br>
 
     <button onclick="extractCourses()">Step 1: Extract Courses</button>
     <h2>Course List:</h2>
@@ -459,6 +460,18 @@
             window.URL.revokeObjectURL(url);
         }
 
+        function showTutorial() {
+            //image
+            var img = document.createElement('img');
+
+            //relative path
+            img.src = 'tutorial.png';
+
+            //show
+            var win = window.open("", "Tutorial");
+            win.document.write(img.outerHTML);
+
+        }
 
     </script>
 </body>
