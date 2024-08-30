@@ -100,8 +100,11 @@
     <button onclick="extractCourses()">转换</button>
     <h2>提取的课程:</h2>
     <ul id="courseList"></ul>
+    <button onclick="showICS()">生成ICS文件</button>
+    <textarea id="outputText" placeholder="ICS文件内容..." readonly></textarea>
 
     <script>
+
         // 星期几的映射
         const dayMap = {
             "Mo": 1,
@@ -113,6 +116,171 @@
             "Su": 0
         };
 
+        var courseList = [];
+
+
+
+        //========================================================================================================
+
+        class Event {
+            constructor() {
+                this.title = '';
+                this.startTime = '';
+                this.endTime = '';
+                this.description = '';
+                this.location = '';
+                this.repeat = false;
+                this.repeatRule = '';
+                this.uid = '';
+            }
+            getStr() {
+                const kwargs = {
+                    'SUMMARY': this.title,
+                    'DTSTART': this.startTime,
+                    'DTEND': this.endTime,
+                    'DESCRIPTION': this.description,
+                    'LOCATION': this.location,
+                    'UID': this.uid,
+                    'DTSTAMP': this.startTime,
+                };
+                if (this.repeat) {
+                    kwargs.RRULE = this.repeatRule;
+                }
+                let str = 'BEGIN:VEVENT\r\n';
+                for (const [name, key] of Object.entries(kwargs)) {
+                    if (['DTSTART', 'DTEND', 'DTSTAMP'].includes(name)) {
+                        str += `${name};${key}\r\n`;
+                    } else {
+                        str += `${name}:${key}\r\n`;
+                    }
+                }
+                str += 'END:VEVENT\r\n';
+                return str;
+            }
+        }
+        class Calendar {
+            constructor(calendarName) {
+                this.textName = calendarName;
+                this.eventList = [];
+            }
+            makeICSText() {
+                let ICSText = 'BEGIN:VCALENDAR\r\n';
+                ICSText += `PRODID:-//hkust.fun//iCalendar//${this.textName}\r\n`;
+                ICSText += 'VERSION:2.0\r\n';
+                ICSText += 'DESCRIPTION:Converter v1.0 (Lite)\r\n';
+                ICSText += `X-WR-CALNAME:${this.textName}\r\n`;
+                ICSText += 'BEGIN:VTIMEZONE\r\n';
+                ICSText += 'TZID:Asia/Shanghai\r\n';
+                ICSText += 'BEGIN:STANDARD\r\n';
+                ICSText += 'TZOFFSETFROM:+0800\r\n';
+                ICSText += 'TZOFFSETTO:+0800\r\n';
+                ICSText += 'END:STANDARD\r\n';
+                ICSText += 'END:VTIMEZONE\r\n';
+                for (const aEvent of this.eventList) {
+                    ICSText += aEvent.getStr();
+                }
+                ICSText += 'END:VCALENDAR';
+                return ICSText;
+            }
+        }
+        function classJSON2ICS(classInfo, calendarName) {
+            const aCalendar = new Calendar(calendarName);
+
+            for (const [x, aClass] of Object.entries(classInfo)) {
+
+                //检查参数
+                if (!aClass.firstClass || aClass.classCount < 0) {
+                    continue;
+                }
+
+                let newClassName = aClass.code + ' - ' + aClass.name;
+                if (aClass.section) {
+                    newClassName += `(${aClass.section})`;
+                }
+
+                var tmp = new Event();
+                tmp.title = newClassName;
+                tmp.description = `${aClass.instructors.join(' | ')}`;
+                tmp.location = aClass.room;
+                tmp.uid = `${x}-${aClass.classNbr}`;
+
+                if (aClass.classCount > 1) {
+                    tmp.repeat = true;
+                    tmp.repeatRule = `FREQ=WEEKLY;COUNT=${aClass.classCount}`;
+                }
+
+                tmp.startTime = `TZID=Asia/Shanghai:${formatDate(aClass.firstClass.start)}T${formatTime(aClass.firstClass.start)}`;
+                tmp.endTime = `TZID=Asia/Shanghai:${formatDate(aClass.firstClass.end)}T${formatTime(aClass.firstClass.end)}`;
+                aCalendar.eventList.push(tmp);
+
+                // for (const [x, aClass] of Object.entries(classInfo)) {
+                //     let newClassName = aClass.kc_name;
+                //     if (aClass.arrange_num !== 1) {
+                //         newClassName += `(${aClass.xslx_name1})`;
+                //     }
+                //     if (aClass.fzmc_name) {
+                //         newClassName += `[${aClass.fzmc_name}]`;
+                //     }
+                //     const weekRangeList = aClass.pkzc.split(',');
+                //     for (const [n, aRange] of Object.entries(weekRangeList)) {
+                //         const tmp = new Event();
+                //         tmp.title = newClassName;
+                //         tmp.description = `${aClass.teachernames} | ${aClass.ktmc_name}`;
+                //         tmp.location = aClass.js_name;
+                //         tmp.uid = `${aClass.id}-${n}`;
+                //         let weekStartTime = null;
+                //         if (aRange.includes('-')) {
+                //             tmp.repeat = true;
+                //             const [startWeek, endWeek] = aRange.split('-').map(Number);
+                //             let repeatRule = '';
+                //             if (aClass.sjbzcode == 1) {
+                //                 repeatRule = `FREQ=WEEKLY;COUNT=${endWeek - startWeek + 1};INTERVAL=1`;
+                //             }
+                //             else if (aClass.sjbzcode == 2) {
+                //                 const adjustedStartWeek = startWeek % 2 !== 1 ? startWeek + 1 : startWeek;
+                //                 const adjustedEndWeek = endWeek % 2 !== 1 ? endWeek - 1 : endWeek;
+                //                 repeatRule = `FREQ=WEEKLY;COUNT=${((adjustedEndWeek - adjustedStartWeek) / 2) + 1};INTERVAL=2`;
+                //             }
+                //             else if (aClass.sjbzcode == 3) {
+                //                 const adjustedStartWeek = startWeek % 2 !== 0 ? startWeek + 1 : startWeek;
+                //                 const adjustedEndWeek = endWeek % 2 !== 0 ? endWeek - 1 : endWeek;
+                //                 repeatRule = `FREQ=WEEKLY;COUNT=${((adjustedEndWeek - adjustedStartWeek) / 2) + 1};INTERVAL=2`;
+                //             }
+                //             tmp.repeatRule = repeatRule;
+                //             weekStartTime = startTime + (startWeek - 1) * 7 * 24 * 3600;
+                //         } else {
+                //             weekStartTime = startTime + (aRange - 1) * 7 * 24 * 3600;
+                //         }
+                //         const weekDay = aClass.pksj.charAt(0);
+                //         const firstClass = weekStartTime + (weekDay - 1) * 24 * 3600;
+                //         const startTime4Num = aClass.djkssj ? aClass.djkssj.replace(":", "") : aClass.idjkssj.toString().padStart(4, '0');
+                //         const endTime4Num = aClass.djjssj ? aClass.djjssj.replace(":", "") : aClass.idjjssj.toString().padStart(4, '0');
+                //         tmp.startTime = `TZID=Asia/Shanghai:${formatDate(new Date(firstClass * 1000))}T${startTime4Num}00`;
+                //         tmp.endTime = `TZID=Asia/Shanghai:${formatDate(new Date(firstClass * 1000))}T${endTime4Num}00`;
+                //         aCalendar.eventList.push(tmp);
+                //     }
+            }
+
+            return aCalendar.makeICSText();
+        }
+
+        function formatDate(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}${month}${day}`;
+        }
+
+        function formatTime(date) {
+            const hour = String(date.getHours()).padStart(2, '0');
+            const minute = String(date.getMinutes()).padStart(2, '0');
+            const second = String(date.getSeconds()).padStart(2, '0');
+            return `${hour}${minute}${second}`;
+        }
+
+
+
+        //========================================================================================================
 
         function extractCourses() {
             var input = document.getElementById('inputText').value;
@@ -362,7 +530,7 @@
             }
 
             // 找到第一个星期几的日期
-            for (let d = new Date(start);; d.setDate(d.getDate() + 1)) {
+            for (let d = new Date(start); ; d.setDate(d.getDate() + 1)) {
                 if (d.getDay() === dayMap[dayOfWeek]) {
                     // 找到第一个星期几的日期后，加上时间
                     let startTime = new Date(d.toDateString() + ' ' + time.start);
@@ -375,6 +543,9 @@
 
         //【渲染】添加课程到列表
         function addCourseToList(courseInfo) {
+
+            courseList.push(courseInfo);
+
             var li = document.createElement('li');
 
             li.innerHTML = `
@@ -392,6 +563,15 @@
 
             document.getElementById('courseList').appendChild(li);
         }
+
+
+        function showICS() {
+            var output = document.getElementById('outputText');
+            output.value = classJSON2ICS(courseList, '课程表');
+        }
+
+
+
     </script>
 </body>
 
