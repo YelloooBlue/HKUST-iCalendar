@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="zh">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>课程信息提取工具</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        textarea {
+            width: 100%;
+            height: 300px;
+            margin-bottom: 10px;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+        }
+
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+
+        li {
+            background-color: #f0f0f0;
+            margin: 5px 0;
+            padding: 10px;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>课程信息提取工具</h1>
+    <textarea id="inputText" placeholder="请输入课程信息..."></textarea>
+    <button onclick="extractCourses()">转换</button>
+    <h2>提取的课程:</h2>
+    <ul id="courseList"></ul>
+
+    <script>
+        function extractCourses() {
+            var input = document.getElementById('inputText').value;
+            var courseList = document.getElementById('courseList');
+            courseList.innerHTML = '';
+
+            var lines = input.split('\n');
+            var currentCourse = null;
+
+            lines.forEach(function (line, index) {
+                if (line.match(/^[A-Z]{4}\s\d{4}/)) {  // 新课程的开始 TODO: 课程代码的正则表达式可能需要调整
+                    if (currentCourse) {
+                        processCourse(currentCourse);
+                    }
+                    currentCourse = { lines: [line] };
+                } else if (currentCourse) {
+                    currentCourse.lines.push(line);
+                }
+            });
+
+            // 处理最后一个课程
+            if (currentCourse) {
+                processCourse(currentCourse);
+            }
+        }
+
+
+        /*
+        * 课程信息处理函数
+        * 1. 提取基本信息（课程代码、课程名称、学分、考核方式）
+        * 2. 提取class信息 (可能有多个class)
+        * 3. 提取每个课程 ‘Days & Times’ 字段 (可能有多个时间段)
+        * 4. 渲染列表
+        */
+
+        function processCourse(course) {
+            var lines = course.lines;
+            if (lines.length < 15) return;  // 确保有足够的行数
+
+            // 1.提取基本信息
+            var baseInfo = extractBaseInfo(lines);
+            if (!baseInfo) return;  // 如果不是已注册课程，则跳过
+
+            // 2.提取class信息
+            var classes = extractClasses(lines.slice(8));  // 从第8行开始提取class信息
+
+
+            classes.forEach(function (classInfo) {
+
+                // 3.1.解析课程 ‘Days & Times’ 字段，如果有多个class则多次添加到列表
+                var schedules = parseSchedule(classInfo.schedule);
+                // 3.2.解析课程 ‘Start/End Date’ 字段
+                var dates = parseDates(classInfo.dates);
+
+                schedules.forEach(function (schedule) {
+                    addCourseToList(Object.assign({}, baseInfo, classInfo, schedule, dates)); // 合并对象
+                });
+
+
+
+
+            });
+        }
+
+        //【函数】提取基本信息
+        function extractBaseInfo(lines) {
+            var headerParts = lines[0].split(' - ');
+            var courseInfo = {
+                code: headerParts[0],
+                name: headerParts[1],
+            };
+
+            if (lines[2] !== 'Enrolled') return null;
+
+            courseInfo.units = lines[3];
+            courseInfo.grading = lines[4];
+
+            return courseInfo;
+        }
+
+        //【函数】提取class信息（可能有多个class）
+        function extractClasses(lines) {
+            var classes = [];
+            var currentClass = { classNbr: null, section: null, component: null, schedule: null, room: null, instructors: [], dates: null };
+            var lastClass = currentClass;
+
+            lines.forEach(function (line) {
+
+                // 由于课程信息的格式不固定，所以要小心处理
+                // 当某个参数为空时（classNbr也有可能为空），使用上一个class的参数（TODO）
+                // 我们可以通过检测日期是否存在来判断是否完成了一个class的提取
+
+                
+                if (!currentClass.classNbr) {
+                    currentClass.classNbr = line.trim() || lastClass.classNbr;
+                }
+
+                else if (!currentClass.section) {
+                    currentClass.section = line.trim() || lastClass.section;
+                }
+
+                else if (!currentClass.component) {
+                    currentClass.component = line.trim() || lastClass.component;
+                }
+
+                else if (!currentClass.schedule) {
+                    currentClass.schedule = line.trim() || lastClass.schedule
+                }
+
+                else if (!currentClass.room) {
+                    currentClass.room = line.trim() || lastClass.room;
+                }
+
+                else if (!line.includes('-')) {
+                    currentClass.instructors.push(line.trim().replace(/,$/, ''));//去掉末尾逗号
+                }
+
+                // 如果日期存在，则表示当前class提取完成
+                else if (line.includes('-')) {
+                    currentClass.dates = line;
+                    classes.push(currentClass);
+                    lastClass = currentClass;
+                    currentClass = { classNbr: null, section: null, component: null, schedule: null, room: null, instructors: [], dates: null };
+                }
+            });
+            return classes;
+        }
+
+
+        //【函数】解析课程 ‘Days & Times’ 字段 (可能有多个时间段)
+        function parseSchedule(scheduleString) {
+
+            console.log("scheduleString: ", scheduleString);
+
+            if (!scheduleString || scheduleString === '') {
+                return [{ day: 'N/A', time: 'N/A' }];
+            }
+
+            var parts = scheduleString.split(' ');
+            var days = parts[0];
+            var time = parts.slice(1).join(' ');
+
+            // 如果有多个'星期几'，则分割
+            var daysList = [];
+            for (var i = 0; i < days.length; i += 2) {
+                daysList.push(days.substr(i, 2));
+            }
+
+            return daysList.map(function (day) {
+                return { day: day, time: time };
+            });
+        }
+
+        //【函数】解析课程 ‘Instructor’ 字段
+
+
+        //【函数】解析课程 ‘Start/End Date’ 字段
+        function parseDates(datesString) {
+            if (!datesString || datesString === '') {
+                return { start: 'N/A', end: 'N/A' };
+            }
+
+            var parts = datesString.split(' - ');
+            return { start: parts[0], end: parts[1] };
+        }
+
+        //【渲染】添加课程到列表
+        function addCourseToList(courseInfo) {
+            var li = document.createElement('li');
+
+            li.innerHTML = `
+                <strong>${courseInfo.code} - ${courseInfo.name} ${courseInfo.section}</strong><br>
+                课程ID: ${courseInfo.classNbr}<br>
+                类型: ${courseInfo.component}<br>
+                时间: ${courseInfo.day} ${courseInfo.time}<br>
+                地点: ${courseInfo.room}<br>
+                教师: ${courseInfo.instructors}<br>
+                开始日期: ${courseInfo.start}<br>
+                结束日期: ${courseInfo.end}
+            `;
+
+            // li.innerHTML = `
+            //     <strong>${courseInfo.code} - ${courseInfo.name} ${courseInfo.section}</strong><br>
+            //     ClassID: ${courseInfo.classNbr}<br>
+            //     Component: ${courseInfo.component}<br>
+            //     Schedule: ${courseInfo.day}<br>
+            //     Time: ${courseInfo.time}<br>
+            //     Room: ${courseInfo.room}<br>
+            //     Instructor(s): ${courseInfo.instructor ? courseInfo.instructor : ''}<br>
+            //     Dates: ${courseInfo.dates}
+            // `;
+
+            /*
+                Units: ${courseInfo.units}<br>
+                Grading: ${courseInfo.grading}<br>
+            */
+
+            document.getElementById('courseList').appendChild(li);
+        }
+    </script>
+</body>
+
+</html>
