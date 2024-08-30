@@ -67,6 +67,16 @@
         li br {
             margin: 5px 0;
         }
+
+        .editable-div {
+            width: 100%;
+            min-height: 300px;
+            border: 1px solid #ccc;
+            padding: 10px;
+            white-space: pre-wrap; /* 保持空格和换行 */
+            overflow: auto;
+            background-color: #f9f9f9;
+        }
     </style>
 </head>
 
@@ -74,6 +84,8 @@
     <h1>HKUST Course Schedule Converter</h1>
     <textarea id="inputText" placeholder="Please paste your course schedule here..."></textarea>
     <u onclick="showTutorial()" target="_blank">How to get and copy my course schedule?</u><br><br>
+    <div id="editableDiv" class="editable-div" contenteditable="true" placeholder="请输入课程信息..."></div>
+
 
     <button onclick="extractCourses()">Step 1: Extract Courses</button>
     <h2>Course List:</h2>
