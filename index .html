@@ -4,13 +4,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>课程信息提取工具</title>
+    <title>Course Schedule Converter</title>
     <style>
         body {
             font-family: Arial, sans-serif;
             background-color: #f9f9f9;
             color: #333;
-            max-width: 800px;
             margin: 0 auto;
             padding: 20px;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
@@ -19,22 +18,21 @@
 
         h1 {
             text-align: center;
-            color: #4CAF50;
         }
 
         textarea {
             width: 100%;
-            height: 300px;
-            margin-bottom: 10px;
-            padding: 10px;
-            border: 1px solid #ccc;
+            height: 200px;
+            margin: 10px 0;
+            border: 2px solid #ccc;
             border-radius: 5px;
             font-size: 16px;
             box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+            resize: none;
         }
 
         button {
-            background-color: #4CAF50;
+            background-color: #000000;
             color: white;
             padding: 10px 20px;
             font-size: 16px;
@@ -45,7 +43,7 @@
         }
 
         button:hover {
-            background-color: #45a049;
+            background-color: #333
         }
 
         ul {
@@ -56,7 +54,6 @@
         li {
             background-color: #ffffff;
             margin: 10px 0;
-            /* 增加上下间距 */
             padding: 15px;
             border-radius: 5px;
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
@@ -65,27 +62,6 @@
         li strong {
             color: #333;
             font-size: 18px;
-            /* 增加字体大小 */
-        }
-
-        .course-info {
-            margin: 5px 0;
-            /* 增加信息之间的间距 */
-        }
-
-        .course-id {
-            color: #007BFF;
-            /* 使用蓝色区分课程ID */
-        }
-
-        .course-type {
-            color: #FF5722;
-            /* 使用橙色区分课程类型 */
-        }
-
-        .course-time {
-            color: #FFC107;
-            /* 使用黄色区分时间 */
         }
 
         li br {
@@ -95,17 +71,20 @@
 </head>
 
 <body>
-    <h1>课程信息提取工具</h1>
-    <textarea id="inputText" placeholder="请输入课程信息..."></textarea>
-    <button onclick="extractCourses()">转换</button>
-    <h2>提取的课程:</h2>
+    <h1>HKUST Course Schedule Converter</h1>
+    <textarea id="inputText" placeholder="Please paste your course schedule here..."></textarea>
+
+    <button onclick="extractCourses()">Step 1: Extract Courses</button>
+    <h2>Course List:</h2>
     <ul id="courseList"></ul>
-    <button onclick="showICS()">生成ICS文件</button>
-    <textarea id="outputText" placeholder="ICS文件内容..." readonly></textarea>
+
+    <button onclick="showICS()">Step 2: Generate ICS File</button>
+    <textarea id="outputText" placeholder="ICS file content will be displayed here..." readonly></textarea>
+
+    <button onclick="downloadICSFile(icsContent, 'HKUST Course Schedule.ics')">Step 3: Download ICS File</button>
 
     <script>
 
-        // 星期几的映射
         const dayMap = {
             "Mo": 1,
             "Tu": 2,
@@ -117,6 +96,7 @@
         };
 
         var courseList = [];
+        var icsContent = '';
 
         //========================================================================================================
 
@@ -186,7 +166,6 @@
 
             for (const [x, aClass] of Object.entries(classInfo)) {
 
-                //检查参数
                 if (!aClass.firstClass || aClass.classCount < 0) {
                     continue;
                 }
@@ -202,16 +181,11 @@
                 tmp.location = aClass.room;
                 tmp.uid = `${x}-${aClass.classNbr}`;
 
-                // TODO: 现在是默认所有课程都是每周重复的，如果有需要可以添加更多的重复规则
-                tmp.repeat = true;
+                tmp.repeat = true; //TODO: This is a temporary solution
                 tmp.repeatRule = `FREQ=WEEKLY;UNTIL=${formatDate(aClass.end)}T235959Z;BYDAY=${convertDays2RRULE(aClass.days)}`;
 
                 tmp.startTime = `TZID=Asia/Shanghai:${formatDate(aClass.firstClass.start)}T${formatTime(aClass.firstClass.start)}`;
                 tmp.endTime = `TZID=Asia/Shanghai:${formatDate(aClass.firstClass.end)}T${formatTime(aClass.firstClass.end)}`;
-
-                // 可以但没必要，降低了可读性
-                // tmp.startTime = `TZID=Asia/Shanghai:${formatDate(aClass.start)}T${formatTime(aClass.time.start)}`;
-                // tmp.endTime = `TZID=Asia/Shanghai:${formatDate(aClass.start)}T${formatTime(aClass.time.end)}`;
 
                 aCalendar.eventList.push(tmp);
             }
@@ -259,8 +233,6 @@
 
         }
 
-
-
         //========================================================================================================
 
         function extractCourses() {
@@ -272,7 +244,7 @@
             var currentCourse = null;
 
             lines.forEach(function (line, index) {
-                if (line.match(/^[A-Z]{4}\s\d{4}/)) {  // 新课程的开始 TODO: 课程代码的正则表达式可能需要调整
+                if (line.match(/^[A-Z]{4}\s\d{4}/)) {  // TODO: A Course Number, not a perfect match, is there different format?
                     if (currentCourse) {
                         processCourse(currentCourse);
                     }
@@ -282,7 +254,7 @@
                 }
             });
 
-            // 处理最后一个课程
+            // last course
             if (currentCourse) {
                 processCourse(currentCourse);
             }
@@ -291,79 +263,61 @@
 
         //====================【Muti-Line Parser】====================
 
+        // ! Some courses have multiple classes, so we need to parse them separately
 
-        /*
-        * 课程信息处理函数
-        * 1. 提取基本信息（课程代码、课程名称、学分、考核方式）
-        * 2. 提取class信息 (可能有多个class)
-        * 3. 提取每个课程 ‘Days & Times’ 字段 (可能有多个时间段)
-        * 4. 渲染列表
-        */
-
-
-        // 注意：一个Course可能有多个class
-
-        //【Muti-Line Parser】处理Course信息 (0-15+行)
-
+        //【Muti-Line Parser】processCourse (0~15)
         function processCourse(course) {
             var lines = course.lines;
-            if (lines.length < 15) return;  // 确保有足够的行数
+            if (lines.length < 15) return;
 
-            // 1.提取基本信息
+            // 1. Base Info
             var baseInfo = extractBaseInfo(lines);
-            if (!baseInfo) return;  // 如果不是已注册课程，则跳过
+            if (!baseInfo) return;
 
-            // 2.提取class信息
-            var classes = extractClasses(lines.slice(8));  // 从第8行开始提取class信息
+            // 2. Class Info
+            var classes = extractClasses(lines.slice(8));  // Skip the first 8 lines
 
 
             classes.forEach(function (classInfo) {
 
-                // 3.1.解析课程 ‘Days & Times’ 字段，如果有多个class则多次添加到列表
+                // 3.1. Process "Days & Times" field
                 var schedule = parseSchedule(classInfo.schedule);
 
-                // 3.2.解析课程 ‘Start/End Date’ 字段
+                // 3.2. Process "Start/End Date" field
                 var dates = parseDates(classInfo.dates);
 
-                // 3.4.计算第一节课的具体日期和时间（开始和结束）
+                // 3.4. Calculate the first class date
                 var firstClass = calculateFirstClassDate(dates.start, schedule.days, schedule.time);
 
                 addCourseToList(Object.assign({}, baseInfo, classInfo, schedule, dates, { firstClass: firstClass }));
-
             });
         }
 
 
 
-        //【Muti-Line Parser】提取Class信息 (8-15+行)
+        //【Muti-Line Parser】processClasses (8~15)
         function extractClasses(lines) {
             var classes = [];
             var currentClass = { classNbr: null, section: null, component: null, schedule: null, room: null, instructors: [], dates: null };
             var lastClass = currentClass;
 
-            // 状态机
+            // index
             var currentKeyIndex = 0;
             var keys = Object.keys(currentClass);
 
             lines.forEach(function (line) {
 
-                // 由于课程信息的格式不固定，所以要小心处理
-                // 当某个参数为空时（classNbr也有可能为空），使用上一个class的参数（TODO）
-                // 我们可以通过检测日期是否存在来判断是否完成了一个class的提取
-
-
-                //逐个提取class信息
                 if (currentKeyIndex < keys.length) {
 
                     var key = keys[currentKeyIndex];
                     var value = line.trim();
 
-                    // 特殊处理
+                    // The 'Instructors' field may span multiple lines
                     if (key === 'instructors' && !value.includes('-')) {
-                        currentClass.instructors.push(value.replace(/,$/, ''));//去掉末尾逗号
+                        currentClass.instructors.push(value.replace(/,$/, ''));// Remove the trailing comma
                     }
 
-                    // 如果正则匹配到日期（ 'dd/mm/yyyy - dd/mm/yyyy' ），则表示当前class提取完成
+                    // The 'Instructors' field ends
                     else if (value.match(/\d{2}\/\d{2}\/\d{4}\s-\s\d{2}\/\d{2}\/\d{4}/)) {
                         currentClass.dates = value.trim();
                         classes.push(currentClass);
@@ -372,7 +326,7 @@
                         currentKeyIndex = 0;
                     }
 
-                    // 其他普通字段
+                    // Other fields
                     else {
                         currentClass[keys[currentKeyIndex]] = line.trim() || lastClass[keys[currentKeyIndex]];
                         currentKeyIndex++;
@@ -384,7 +338,7 @@
 
         //====================【Parser】====================
 
-        //【Parser】提取基本信息
+        //【Parser】parseBaseInfo
         function extractBaseInfo(lines) {
             var headerParts = lines[0].split(' - ');
             var courseInfo = {
@@ -400,7 +354,7 @@
             return courseInfo;
         }
 
-        //【Parser】解析课程 ‘Days & Times’ 字段 (可能有多个时间段)
+        //【Parser】parseSchedule ("TuTh 16:30 - 17:50")
         function parseSchedule(scheduleString) {
 
             if (!scheduleString || scheduleString === '') {
@@ -418,15 +372,15 @@
             return { days: days, time: { start: startTime, end: endTime } };
         }
 
-        //【Parser】解析课程 ‘Start/End Date’ 字段
+        //【Parser】parseDates ("01/09/2020 - 30/11/2020")
         function parseDates(datesString) {
             if (!datesString || datesString === '') {
                 return { start: 'N/A', end: 'N/A' };
             }
 
             var parts = datesString.split(' - ');
-            //转化为日期格式
-            console.log("parts: ", parts); //格式为 dd/mm/yyyy
+
+            console.log("parts: ", parts); //dd/mm/yyyy
             var start = new Date(parts[0].split('/').reverse().join('-'));
             var end = new Date(parts[1].split('/').reverse().join('-'));
 
@@ -436,21 +390,20 @@
 
         //====================【Utils】====================
 
-        //【Utils】计算第一节课的具体日期和时间（开始和结束）
+        //【Utils】calculateFirstClassDate
         function calculateFirstClassDate(start, dayOfWeek, time) {
 
             if (dayOfWeek.length !== 2) {
-                dayOfWeek = dayOfWeek.slice(0, 2); // 只取前两个字符
+                dayOfWeek = dayOfWeek.slice(0, 2);
             }
 
             if (!dayMap[dayOfWeek]) {
-                return null; // 如果星期几不在映射中，返回null
+                return null;
             }
 
-            // 找到第一个星期几的日期
+            // Find the first class day of the week
             for (let d = new Date(start); ; d.setDate(d.getDate() + 1)) {
                 if (d.getDay() === dayMap[dayOfWeek]) {
-                    // 找到第一个星期几的日期后，加上时间
                     let startTime = new Date(d.toDateString() + ' ' + time.start);
                     let endTime = new Date(d.toDateString() + ' ' + time.end);
                     return { start: startTime, end: endTime };
@@ -458,15 +411,13 @@
             }
         }
 
-        //【Utils】 将一周上多节课的课程转化为RRULE可以识别的 BYDAY
-        // 例如： MoWeFr -> MO,WE,FR
+        //【Utils】 Convert multiple classes in a week to BYDAY that RRULE can recognize (MoWeFr -> MO,WE,FR)
         function convertDays2RRULE(inputStr) {
             let result = [];
 
             inputStr = inputStr.trim().toUpperCase();
 
             for (let i = 0; i < inputStr.length; i += 2) {
-                // 获取两个字符并转换为大写
                 const day = inputStr.slice(i, i + 2);
                 result.push(day);
             }
@@ -474,37 +425,39 @@
             return result.join(',');
         }
 
-        //====================【渲染器】====================
+        //====================【Render】====================
 
 
-        //【渲染】添加课程到列表
+        //【Render】addCourseToList
         function addCourseToList(courseInfo) {
-
             courseList.push(courseInfo);
 
             var li = document.createElement('li');
-
             li.innerHTML = `
-                <strong>${courseInfo.code} - ${courseInfo.name}(${courseInfo.section})</strong><br>
-                <span class="course-id">课程ID: ${courseInfo.classNbr}</span><br>
-                <span class="course-type">类型: ${courseInfo.component}</span><br>
-                <span class="course-time">时间: ${courseInfo.days} ${courseInfo.time.start} - ${courseInfo.time.end}</span><br>
-                地点: ${courseInfo.room}<br>
-                教师: ${courseInfo.instructors}<br>
-                开始日期: ${courseInfo.start}<br>
-                结束日期: ${courseInfo.end}<br>
-                第一节课: ${courseInfo.firstClass ? courseInfo.firstClass.start : 'N/A'} - ${courseInfo.firstClass ? courseInfo.firstClass.end : 'N/A'}<br>
+                <strong>${courseInfo.code} - ${courseInfo.name}</strong> ${courseInfo.section} ${courseInfo.component} (${courseInfo.classNbr})<br>
+                ${courseInfo.schedule} | ${courseInfo.room}<br>
+                Instructor(s): ${courseInfo.instructors}<br>
+                Dates: ${courseInfo.dates}
             `;
-
             document.getElementById('courseList').appendChild(li);
         }
 
 
         function showICS() {
             var output = document.getElementById('outputText');
-            output.value = classJSON2ICS(courseList, '课程表');
+            icsContent = classJSON2ICS(courseList, 'HKUST Course Schedule');
+            output.value = icsContent;
         }
 
+        function downloadICSFile(icsContent, filename) {
+            const blob = new Blob([icsContent], { type: 'text/plain;charset=utf-8' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename.endsWith('.ics') ? filename : filename + '.ics';
+            a.click();
+            window.URL.revokeObjectURL(url);
+        }
 
 
     </script>
