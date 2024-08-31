@@ -9,6 +9,22 @@
     <title>HKUST Course Schedule Converter</title>
     <script src="main.js" type="module"></script>
 
+    <script>
+
+        function showTutorial() {
+            //image
+            var img = document.createElement('img');
+
+            //relative path
+            img.src = 'tutorial.png';
+
+            //show
+            var win = window.open("", "Tutorial" , "width=800,height=600");
+            win.document.write(img.outerHTML);
+
+        }
+    </script>
+
     <style>
         body {
             /* width: 100%; */
@@ -18,10 +34,10 @@
             margin: 0 auto;
             padding: 20px;
             /* center */
-            display: flex;
+            /* display: flex; */
             flex-direction: column;
             /* justify-content: center; */
-            align-items: center;
+            /* align-items: center; */
         }
 
         h1 {
@@ -29,16 +45,17 @@
         }
 
         .editable-div {
+            padding: 5px;
             width: 100%;
             min-height: 15vh;
             max-height: 30vh;
-            margin: 2vw;
+            margin: 5px;
             height: 50%;
             border: 2px solid #ccc;
             border-radius: 10px;
             /* padding: 10px; */
             white-space: pre-wrap;
-        
+
             overflow: auto;
             background-color: #f9f9f9;
         }
@@ -47,7 +64,7 @@
             background-color: #000;
             color: white;
             padding: 10px 20px;
-            margin: 10px 0;
+            margin: 10px 5px;
             border: none;
             border-radius: 5px;
             cursor: pointer;
@@ -58,11 +75,28 @@
             width: 100%;
             min-height: 15vh;
             max-height: 50vh;
-            margin: 2vw;
+            margin: 5px;
             padding: 0;
             border: 2px solid #ccc;
             border-radius: 10px;
             overflow: auto;
+        }
+
+
+        div.center_div {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        [contentEditable=true]:empty:not(:focus):before {
+            content: attr(data-text);
+            color: #999
+        }
+
+        u {
+            cursor: pointer;
+            margin: 10px;
         }
     </style>
 </head>
@@ -71,17 +105,24 @@
 <body>
     <h1>HKUST Course Schedule Converter</h1>
 
-    <div id="editableDiv" class="editable-div" contenteditable="true" placeholder="Paste your course information here">
+    <div class="center_div">
+        <div id="editableDiv" class="editable-div" contenteditable="true"
+            data-text="Copy your class schedule (or full page) from [SIS -> Student Center -> Enroll -> my class schedule] and paste here."></div>
     </div>
+    <u onclick="showTutorial()" target="_blank">Where to find my class schedule?</u><br>
 
     <button id="extractBtn">Step 1: Extract Course Information</button>
 
-    <div id="courseInfo">
-        <ul id="courses"></ul>
+    <div class="center_div">
+        <div id="courseInfo">
+            <ul id="courses"></ul>
+        </div>
     </div>
 
     <button id="downloadBtn">Step 2: Download Course Information</button>
-    
+
+
+
 </body>
 
 
