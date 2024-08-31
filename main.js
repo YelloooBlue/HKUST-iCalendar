@@ -136,7 +136,7 @@ function getClassDetails(classInfo) {
     // Instructors
     if (classInfo.instructor) {
         //different platforms use different separators
-        moreDetails.instructors = classInfo.instructor.split(";"); //.map(x => x.trim().replace(/^,+|,+$/g, ''));
+        moreDetails.instructors = classInfo.instructor.split(",\n"); //.map(x => x.trim().replace(/^,+|,+$/g, ''));
     }
 
     // Start & End Date
