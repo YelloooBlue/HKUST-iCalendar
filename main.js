@@ -135,7 +135,14 @@ function getClassDetails(classInfo) {
 
     // Instructors
     if (classInfo.instructor) {
-        moreDetails.instructors = classInfo.instructor.split(',\n');
+        //different platforms use different separators
+        if (classInfo.instructor.includes(',\n')) {
+            moreDetails.instructors = classInfo.instructor.split(',\n');
+        } else if (classInfo.instructor.includes(',\r')) {
+            moreDetails.instructors = classInfo.instructor.split(',\r');
+        } else if (classInfo.instructor.includes(',\r\n')) {
+            moreDetails.instructors = classInfo.instructor.split(',\r\n');
+        }
     }
 
     // Start & End Date
@@ -253,7 +260,8 @@ function classJSON2ICS(classInfo, calendarName) {
         var tmp = new Event();
 
         tmp.title = newClassName;
-        tmp.description = `Instructor: ${aClass.instructors.join(', ')}`;
+        //tmp.description = `Instructor: ${aClass.instructor}`;
+        tmp.description = `Instructor: ${aClass.instructors.join(' ')}`;
         tmp.location = aClass.room;
         tmp.uid = `${x}-${aClass.classNbr}`;
 
@@ -287,7 +295,7 @@ function formatDate(date) {
 
 function formatTime(date) {
 
-    console.log("date: ", date, "typeof date: ", typeof date);
+    //console.log("date: ", date, "typeof date: ", typeof date);
 
     if (typeof date === 'string') {
         date = date.trim();
