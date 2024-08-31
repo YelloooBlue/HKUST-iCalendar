@@ -59,7 +59,7 @@ function downloadCourses() {
 }
 
 function downloadICSFile(icsContent, filename) {
-    const blob = new Blob([icsContent], { type: 'text/plain;charset=utf-8' });
+    const blob = new Blob([icsContent], { type: 'text/calendar' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;

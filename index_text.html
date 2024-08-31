@@ -67,11 +67,19 @@
         li br {
             margin: 5px 0;
         }
+
+        .footer {
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            text-align: center;
+            margin: 10px;
+        }
     </style>
 </head>
 
 <body>
-    <h1>HKUST Course Schedule Converter</h1>
+    <h1>HKUST Course Schedule Converter (Pure Text Version)</h1>
     <textarea id="inputText" placeholder="Please paste your course schedule here..."></textarea>
     <u onclick="showTutorial()" target="_blank">How to get and copy my course schedule?</u><br><br>
 
@@ -83,6 +91,11 @@
     <textarea id="outputText" placeholder="ICS file content will be displayed here..." readonly></textarea>
 
     <button onclick="downloadICSFile(icsContent, 'HKUST Course Schedule.ics')">Step 3: Download ICS File</button>
+
+    <div class="footer">
+        <a href="index_text.html">!New Version</a>
+        <a style="margin-left: 10px;" href="https://github.com/yelloooblue/HKUST-iCalendar" target="_blank">GitHub</a>
+    </div>
 
     <script>
 
