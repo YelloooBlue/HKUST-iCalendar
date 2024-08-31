@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="zh">
+<!DOCTYPE html>
+<html lang="zh">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>课程信息提取工具</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .editable-div {
+            width: 100%;
+            min-height: 300px;
+            border: 1px solid #ccc;
+            padding: 10px;
+            white-space: pre-wrap;
+            /* 保持空格和换行 */
+            overflow: auto;
+            background-color: #f9f9f9;
+        }
+
+        .highlight-address {
+            background-color: lightgreen;
+        }
+
+        .highlight-instructor {
+            background-color: lightyellow;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+        }
+
+        .highlight {
+            background-color: lightblue;
+            /* 默认高亮颜色 */
+        }
+    </style>
+</head>
+
+
+<body>
+
+    <div id="editableDiv" class="editable-div" contenteditable="true" placeholder="请输入课程信息..."></div>
+
+    <button onclick="extractCourses()">提取课程信息</button>
+
+    <ul id="courses"></ul>
+
+    <script>
+
+
+        function extractCourses() {
+            console.log("Extracting courses...");
+
+            // All classes
+            var classTotalNumber = getClassTotalNumber();
+            console.log("Class Total Number: " + classTotalNumber);
+
+            var ci = [];
+
+            for (var classAbsoluteIndex = 0; classAbsoluteIndex < classTotalNumber; classAbsoluteIndex++) {
+                var classInfo = getClassInfoByAbsIndex(classAbsoluteIndex);
+                // console.log(classInfo);
+                ci.push(classInfo);
+            }
+
+            console.log(ci);
+        }
+
+
+        // // Big table (ID "ACE_STDNT_ENRL_SSV2$0")
+        // var coursesTable = getCoursesTable(0);
+        // console.log(coursesTable);
+
+        // // Get all courses <Div> in the table
+        // var courses = [];
+        // var currentCourseIndex = 0;
+        // while (true) {
+        //     var course = getCoursesDiv(currentCourseIndex);
+        //     if (course == null) {
+        //         break;
+        //     }
+        //     courses.push(course);
+        //     currentCourseIndex++;
+        // }
+        // currentCourseIndex = 0;
+
+        // // Get all classes <Table> in each course <Div>
+        // var courseInfos = [];
+        // for (var i = 0; i < courses.length; i++) {
+
+        //     // Name
+        //     var courseName = courses[i].querySelector("td.PAGROUPDIVIDER").innerText;
+        //     console.log(courseName);
+
+        //     // ClassNbr
+        //     var classNbr = document.getElementById("DERIVED_CLS_DTL_CLASS_NBR$" + i).innerText;
+        //     var section = document.getElementById("MTG_SECTION$" + i).innerText;
+        //     var components = document.getElementById("MTG_COMP$" + i).innerText;
+        //     var daysTimes = document.getElementById("MTG_SCHED$" + i).innerText;
+        //     var room = document.getElementById("MTG_LOC$" + i).innerText;
+        //     var instructor = document.getElementById("DERIVED_CLS_DTL_SSR_INSTR_LONG$" + i).innerText;
+        //     var startEndDate = document.getElementById("MTG_DATES$" + i).innerText;
+
+        //     var classInfo = {
+        //         classNbr: classNbr,
+        //         section: section,
+        //         components: components,
+        //         daysTimes: daysTimes,
+        //         room: room,
+        //         instructor: instructor,
+        //         startEndDate: startEndDate
+        //     };
+
+        //     console.log(classInfo);
+
+        // // Classes table
+        // var course = courses[i];
+        // var classesTable = getClassesTable(i);
+        // console.log(classesTable);
+
+        // // Get all classes <Tr> in the table
+        // var classes = [];
+        // var currentClassIndex = 1; //!
+        // while (true) {
+        //     var classTr = getClassTr(i, currentClassIndex);
+        //     if (classTr == null) {
+        //         break;
+        //     }
+        //     classes.push(classTr);
+        //     currentClassIndex++;
+        // }
+
+        // // Get all class info in each class <Tr>
+        // /**
+        //  * This index is classIndex (inner index, start from 1)
+        //  * 
+        //  * ID：DERIVED_CLS_DTL_CLASS_NBR$0
+        //  * Section: MTG_SECTION$0
+        //  * Components: MTG_COMP$0
+        //  * DaysTimes：MTG_SCHED$0
+        //  * Room：MTG_LOC$0
+        //  * Instructor：DERIVED_CLS_DTL_SSR_INSTR_LONG$0
+        //  * StartEndDate：MTG_DATES$0
+        //  */
+        // var classInfos = [];
+        // for (var j = 0; j < classes.length; j++) {
+        //     var classTr = classes[j];
+        //     var classInfo = {
+        //         //根据
+        //     };
+        //     classInfos.push(classInfo);
+        // }
+
+        // courseInfos.push({
+        //     courseName: courseName,
+        //     classes: classInfos
+        // });
+
+        // console.log(courseInfos);
+
+
+
+
+        //     }
+
+
+
+
+
+
+        // return courseInfos;
+
+
+        // }
+
+
+        // ID "ACE_STDNT_ENRL_SSV2$0"
+        function getCoursesTable(index) {
+            return document.getElementById("ACE_STDNT_ENRL_SSV2$" + index);
+        }
+
+        // Get course <Div> under <Table> 【整个课程的div】
+        // ID "win0divDERIVED_REGFRM1_DESCR20$0"
+        function getCoursesDiv(courseIndex) {
+            return document.getElementById("win0divDERIVED_REGFRM1_DESCR20$" + courseIndex);
+        }
+
+        // Get second row table under course <Div> 【包含了所有classes的table】
+        // ID "CLASS_MTG_VW$scroll$0"
+        function getClassesTable(courseIndex) {
+            return document.getElementById("CLASS_MTG_VW$scroll$" + courseIndex);
+        }
+
+        // Get class <Tr> under classes <Table> 【每个class的tr】
+        // ID "trCLASS_MTG_VW$0_row1" (start from 1)
+        function getClassTr(courseIndex, classIndex) {
+            console.log("trCLASS_MTG_VW$" + courseIndex + "_row" + classIndex);
+            return document.getElementById("trCLASS_MTG_VW$" + courseIndex + "_row" + classIndex);
+        }
+
+
+
+
+
+
+
+
+
+
+
+        //每个class的信息，在这我们将一个class视为一个event
+
+        /**
+         * This index is absolute index (start from 0)
+         * 
+         * ID：DERIVED_CLS_DTL_CLASS_NBR$0 
+         * Section: MTG_SECTION$0
+         * Components: MTG_COMP$0
+         * DaysTimes：MTG_SCHED$0
+         * Room：MTG_LOC$0
+         * Instructor：DERIVED_CLS_DTL_SSR_INSTR_LONG$0
+         * StartEndDate：MTG_DATES$0
+         */
+
+
+        //====================【Utils】====================
+
+        // Get Class Total Number
+        function getClassTotalNumber() {
+            var classTotalNumber = 0;
+            while (true) {
+                var classNbr = document.getElementById("DERIVED_CLS_DTL_CLASS_NBR$" + classTotalNumber);
+                if (classNbr == null) {
+                    break;
+                }
+                classTotalNumber++;
+            }
+            return classTotalNumber;
+        }
+
+        // Get Class Info by absolute index
+        function getClassInfoByAbsIndex(classAbsoluteIndex) {
+
+            console.log("getting class info by absolute index: " + classAbsoluteIndex);
+
+            var e_classNbrSpan = document.getElementById("DERIVED_CLS_DTL_CLASS_NBR$" + classAbsoluteIndex);
+            
+
+            // outerInfo (about course)
+            var e_courseTable = e_classNbrSpan.closest("table.PSGROUPBOXWBO");
+            var courseName = e_courseTable.querySelector("td.PAGROUPDIVIDER").innerText;
+
+            var e_courseInfoTable = e_courseTable.querySelector("table.PSGROUPBOX");
+            var courseIndex = e_courseInfoTable.id.split("$")[1]; // it would be useful.
+
+            var e_courseFistClassTr = document.getElementById("trCLASS_MTG_VW$" + courseIndex + "_row1"); //trCLASS_MTG_VW$6_row1
+            var e_courseFistClassAbsIndex = e_courseFistClassTr?.querySelector("span.PSEDITBOX_DISPONLY").id.split("$")[1];
+            
+            // innerInfo (about class)
+            var classNbr = e_classNbrSpan?.innerText.trim() || document.getElementById("DERIVED_CLS_DTL_CLASS_NBR$" + e_courseFistClassAbsIndex)?.innerText;
+            var classSection = document.getElementById("MTG_SECTION$" + classAbsoluteIndex)?.innerText.trim() || document.getElementById("MTG_SECTION$" + e_courseFistClassAbsIndex)?.innerText;
+            var classComponents = document.getElementById("MTG_COMP$" + classAbsoluteIndex)?.innerText.trim() || document.getElementById("MTG_COMP$" + e_courseFistClassAbsIndex)?.innerText;
+            var classDaysTimes = document.getElementById("MTG_SCHED$" + classAbsoluteIndex)?.innerText.trim() || document.getElementById("MTG_SCHED$" + e_courseFistClassAbsIndex)?.innerText;
+            var classRoom = document.getElementById("MTG_LOC$" + classAbsoluteIndex).innerText.trim();
+            var classInstructor = document.getElementById("DERIVED_CLS_DTL_SSR_INSTR_LONG$" + classAbsoluteIndex).innerText.trim();
+            var classStartEndDate = document.getElementById("MTG_DATES$" + classAbsoluteIndex).innerText.trim();
+
+        
+
+
+            return {
+
+                // innerInfo
+                _classAbsoluteIndex: classAbsoluteIndex,
+
+                classNbr: classNbr,
+                classSection: classSection,
+                classComponents: classComponents,
+                daysTimes: classDaysTimes,
+                room: classRoom,
+                instructor: classInstructor,
+                startEndDate: classStartEndDate,
+
+                // outerInfo
+                _courseIndex: courseIndex,
+
+                courseName: courseName,
+            };
+        }
+
+    </script>
+
+</body>
+
+
+</html>
