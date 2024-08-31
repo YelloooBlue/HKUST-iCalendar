@@ -138,8 +138,6 @@ function getClassDetails(classInfo) {
         //different platforms use different separators
         if (classInfo.instructor.includes(',\n')) {
             moreDetails.instructors = classInfo.instructor.split(',\n');
-        } else if (classInfo.instructor.includes(',\r')) {
-            moreDetails.instructors = classInfo.instructor.split(',\r');
         } else if (classInfo.instructor.includes(',\r\n')) {
             moreDetails.instructors = classInfo.instructor.split(',\r\n');
         }
