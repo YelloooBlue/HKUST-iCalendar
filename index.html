@@ -19,7 +19,7 @@
             img.src = 'tutorial.png';
 
             //show
-            var win = window.open("", "Tutorial" , "width=800,height=600");
+            var win = window.open("", "Tutorial", "width=800,height=600");
             win.document.write(img.outerHTML);
 
         }
@@ -102,9 +102,13 @@
         .footer {
             position: fixed;
             bottom: 0;
-            width: 100%;
-            text-align: center;
+            right: 0;
+            text-align: right;
             margin: 10px;
+        }
+
+        a {
+            color: #000000;
         }
     </style>
 </head>
@@ -115,7 +119,8 @@
 
     <div class="center_div">
         <div id="editableDiv" class="editable-div" contenteditable="true"
-            data-text="Copy your class schedule (or full page) from [SIS -> Student Center -> Enroll -> my class schedule] and paste here."></div>
+            data-text="Copy your class schedule (or full page) from [SIS -> Student Center -> Enroll -> my class schedule] and paste here.">
+        </div>
     </div>
     <u onclick="showTutorial()" target="_blank">Where to find my class schedule?</u><br>
 
@@ -133,10 +138,10 @@
     <br>
     <br>
     <div class="footer">
-        <a href="index_text.html">Pure Text Version (old)</a>
-        <a style="margin-left: 10px;" href="https://github.com/yelloooblue/HKUST-iCalendar" target="_blank">GitHub</a>
+        <a style="margin: 5px;" href="index_text.html">Pure Text Version (old)</a>
+        <a style="margin: 5px;" href="https://github.com/yelloooblue/HKUST-iCalendar" target="_blank">GitHub</a>
     </div>
-    
+
 
 </body>
 
