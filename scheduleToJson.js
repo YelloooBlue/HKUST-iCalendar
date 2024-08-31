@@ -34,7 +34,7 @@ export function extractCoursesJson() {
             var daysTimes = classTr.querySelector("span[id^='MTG_SCHED$']")?.innerText.trim();
             var room = classTr.querySelector("span[id^='MTG_LOC$']")?.innerText.trim();
             var instructor_tmp = classTr.querySelector("span[id^='DERIVED_CLS_DTL_SSR_INSTR_LONG$']")?.innerHTML; //!
-            var instructor = instructor_tmp?.replace(/&nbsp;/g, " ").replace(/,<br>/g, ";").replace(/<span.*?>/g, "").replace(/<\/span>/g, "").trim();
+            var instructor = instructor_tmp?.replace(/&nbsp;/g, " ").replace(/,?<br>/g, ";").replace(/<span.*?>/g, "").replace(/<\/span>/g, "").trim();
             var startEndDate = classTr.querySelector("span[id^='MTG_DATES$']")?.innerText.trim();
 
             var classInfo = {
