@@ -1,464 +1,15 @@
 <!DOCTYPE html>
 <html lang="zh">
+<!DOCTYPE html>
+<html lang="zh">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Course Schedule Converter</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f9f9f9;
-            color: #333;
-            margin: 0 auto;
-            padding: 20px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-            border-radius: 8px;
-        }
-
-        h1 {
-            text-align: center;
-        }
-
-        textarea {
-            width: 100%;
-            height: 200px;
-            margin: 10px 0;
-            border: 2px solid #ccc;
-            border-radius: 5px;
-            font-size: 16px;
-            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
-            resize: none;
-        }
-
-        button {
-            background-color: #000000;
-            color: white;
-            padding: 10px 20px;
-            font-size: 16px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: background-color 0.3s;
-        }
-
-        button:hover {
-            background-color: #333
-        }
-
-        ul {
-            list-style-type: none;
-            padding: 0;
-        }
-
-        li {
-            background-color: #ffffff;
-            margin: 10px 0;
-            padding: 15px;
-            border-radius: 5px;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-        }
-
-        li strong {
-            color: #333;
-            font-size: 18px;
-        }
-
-        li br {
-            margin: 5px 0;
-        }
-    </style>
-</head>
-
-<body>
-    <h1>HKUST Course Schedule Converter</h1>
-    <textarea id="inputText" placeholder="Please paste your course schedule here..."></textarea>
-    <u onclick="showTutorial()" target="_blank">How to get and copy my course schedule?</u><br><br>
-
-    <button onclick="extractCourses()">Step 1: Extract Courses</button>
-    <h2>Course List:</h2>
-    <ul id="courseList"></ul>
-
-    <button onclick="showICS()">Step 2: Generate ICS File</button>
-    <textarea id="outputText" placeholder="ICS file content will be displayed here..." readonly></textarea>
-
-    <button onclick="downloadICSFile(icsContent, 'HKUST Course Schedule.ics')">Step 3: Download ICS File</button>
+    <title>HKUST Course Schedule Converter</title>
+    <script src="main.js" type="module"></script>
 
     <script>
-
-        const dayMap = {
-            "Mo": 1,
-            "Tu": 2,
-            "We": 3,
-            "Th": 4,
-            "Fr": 5,
-            "Sa": 6,
-            "Su": 0
-        };
-
-        var courseList = [];
-        var icsContent = '';
-
-        //========================================================================================================
-
-        class Event {
-            constructor() {
-                this.title = '';
-                this.startTime = '';
-                this.endTime = '';
-                this.description = '';
-                this.location = '';
-                this.repeat = false;
-                this.repeatRule = '';
-                this.uid = '';
-            }
-            getStr() {
-                const kwargs = {
-                    'SUMMARY': this.title,
-                    'DTSTART': this.startTime,
-                    'DTEND': this.endTime,
-                    'DESCRIPTION': this.description,
-                    'LOCATION': this.location,
-                    'UID': this.uid,
-                    'DTSTAMP': this.startTime,
-                };
-                if (this.repeat) {
-                    kwargs.RRULE = this.repeatRule;
-                }
-                let str = 'BEGIN:VEVENT\r\n';
-                for (const [name, key] of Object.entries(kwargs)) {
-                    if (['DTSTART', 'DTEND', 'DTSTAMP'].includes(name)) {
-                        str += `${name};${key}\r\n`;
-                    } else {
-                        str += `${name}:${key}\r\n`;
-                    }
-                }
-                str += 'END:VEVENT\r\n';
-                return str;
-            }
-        }
-        class Calendar {
-            constructor(calendarName) {
-                this.textName = calendarName;
-                this.eventList = [];
-            }
-            makeICSText() {
-                let ICSText = 'BEGIN:VCALENDAR\r\n';
-                ICSText += `PRODID:-//hkust.fun//iCalendar//${this.textName}\r\n`;
-                ICSText += 'VERSION:2.0\r\n';
-                ICSText += 'DESCRIPTION:Converter v1.0 (Lite)\r\n';
-                ICSText += `X-WR-CALNAME:${this.textName}\r\n`;
-                ICSText += 'BEGIN:VTIMEZONE\r\n';
-                ICSText += 'TZID:Asia/Shanghai\r\n';
-                ICSText += 'BEGIN:STANDARD\r\n';
-                ICSText += 'TZOFFSETFROM:+0800\r\n';
-                ICSText += 'TZOFFSETTO:+0800\r\n';
-                ICSText += 'END:STANDARD\r\n';
-                ICSText += 'END:VTIMEZONE\r\n';
-                for (const aEvent of this.eventList) {
-                    ICSText += aEvent.getStr();
-                }
-                ICSText += 'END:VCALENDAR';
-                return ICSText;
-            }
-        }
-        function classJSON2ICS(classInfo, calendarName) {
-            const aCalendar = new Calendar(calendarName);
-
-            for (const [x, aClass] of Object.entries(classInfo)) {
-
-                if (!aClass.firstClass || aClass.classCount < 0) {
-                    continue;
-                }
-
-                let newClassName = aClass.code + ' - ' + aClass.name;
-                if (aClass.section) {
-                    newClassName += `(${aClass.section})`;
-                }
-
-                var tmp = new Event();
-                tmp.title = newClassName;
-                tmp.description = `${aClass.instructors.join(' | ')}`;
-                tmp.location = aClass.room;
-                tmp.uid = `${x}-${aClass.classNbr}`;
-
-                tmp.repeat = true; //TODO: This is a temporary solution
-                tmp.repeatRule = `FREQ=WEEKLY;UNTIL=${formatDate(aClass.end)}T235959Z;BYDAY=${convertDays2RRULE(aClass.days)}`;
-
-                tmp.startTime = `TZID=Asia/Shanghai:${formatDate(aClass.firstClass.start)}T${formatTime(aClass.firstClass.start)}`;
-                tmp.endTime = `TZID=Asia/Shanghai:${formatDate(aClass.firstClass.end)}T${formatTime(aClass.firstClass.end)}`;
-
-                aCalendar.eventList.push(tmp);
-            }
-
-            return aCalendar.makeICSText();
-        }
-
-
-        //====
-
-        function isDate(obj) {
-            return obj instanceof Date && !isNaN(obj);
-        }
-
-        function formatDate(date) {
-            const year = date.getFullYear();
-            const month = String(date.getMonth() + 1).padStart(2, '0');
-            const day = String(date.getDate()).padStart(2, '0');
-            return `${year}${month}${day}`;
-        }
-
-        function formatTime(date) {
-
-            console.log("date: ", date, "typeof date: ", typeof date);
-
-            if (typeof date === 'string') {
-                date = date.trim();
-                if (date === 'N/A') {
-                    return '000000';
-                } else if (date.length === 4) {
-                    return date + '00';
-                } else if (date.length === 5) {
-                    return date.replace(':', '') + '00';
-                }
-            }
-            else if (isDate(date)) {
-                const hour = String(date.getHours()).padStart(2, '0');
-                const minute = String(date.getMinutes()).padStart(2, '0');
-                const second = String(date.getSeconds()).padStart(2, '0');
-                return `${hour}${minute}${second}`;
-            } else {
-                return '000000';
-            }
-
-
-        }
-
-        //========================================================================================================
-
-        function extractCourses() {
-            var input = document.getElementById('inputText').value;
-            var courseList = document.getElementById('courseList');
-            courseList.innerHTML = '';
-
-            var lines = input.split('\n');
-            var currentCourse = null;
-
-            lines.forEach(function (line, index) {
-                if (line.match(/^[A-Z]{4}\s\d{4}/)) {  // TODO: A Course Number, not a perfect match, is there different format?
-                    if (currentCourse) {
-                        processCourse(currentCourse);
-                    }
-                    currentCourse = { lines: [line] };
-                } else if (currentCourse) {
-                    currentCourse.lines.push(line);
-                }
-            });
-
-            // last course
-            if (currentCourse) {
-                processCourse(currentCourse);
-            }
-        }
-
-
-        //====================【Muti-Line Parser】====================
-
-        // ! Some courses have multiple classes, so we need to parse them separately
-
-        //【Muti-Line Parser】processCourse (0~15)
-        function processCourse(course) {
-            var lines = course.lines;
-            if (lines.length < 15) return;
-
-            // 1. Base Info
-            var baseInfo = extractBaseInfo(lines);
-            if (!baseInfo) return;
-
-            // 2. Class Info
-            var classes = extractClasses(lines.slice(8));  // Skip the first 8 lines
-
-
-            classes.forEach(function (classInfo) {
-
-                // 3.1. Process "Days & Times" field
-                var schedule = parseSchedule(classInfo.schedule);
-
-                // 3.2. Process "Start/End Date" field
-                var dates = parseDates(classInfo.dates);
-
-                // 3.4. Calculate the first class date
-                var firstClass = calculateFirstClassDate(dates.start, schedule.days, schedule.time);
-
-                addCourseToList(Object.assign({}, baseInfo, classInfo, schedule, dates, { firstClass: firstClass }));
-            });
-        }
-
-
-
-        //【Muti-Line Parser】processClasses (8~15)
-        function extractClasses(lines) {
-            var classes = [];
-            var currentClass = { classNbr: null, section: null, component: null, schedule: null, room: null, instructors: [], dates: null };
-            var lastClass = currentClass;
-
-            // index
-            var currentKeyIndex = 0;
-            var keys = Object.keys(currentClass);
-
-            lines.forEach(function (line) {
-
-                if (currentKeyIndex < keys.length) {
-
-                    var key = keys[currentKeyIndex];
-                    var value = line.trim();
-
-                    // The 'Instructors' field may span multiple lines
-                    if (key === 'instructors' && !value.includes('-')) {
-                        currentClass.instructors.push(value.replace(/,$/, ''));// Remove the trailing comma
-                    }
-
-                    // The 'Instructors' field ends
-                    else if (value.match(/\d{2}\/\d{2}\/\d{4}\s-\s\d{2}\/\d{2}\/\d{4}/)) {
-                        currentClass.dates = value.trim();
-                        classes.push(currentClass);
-                        lastClass = currentClass;
-                        currentClass = { classNbr: null, section: null, component: null, schedule: null, room: null, instructors: [], dates: null };
-                        currentKeyIndex = 0;
-                    }
-
-                    // Other fields
-                    else {
-                        currentClass[keys[currentKeyIndex]] = line.trim() || lastClass[keys[currentKeyIndex]];
-                        currentKeyIndex++;
-                    }
-                }
-            });
-            return classes;
-        }
-
-        //====================【Parser】====================
-
-        //【Parser】parseBaseInfo
-        function extractBaseInfo(lines) {
-            var headerParts = lines[0].split(' - ');
-            var courseInfo = {
-                code: headerParts[0],
-                name: headerParts[1],
-            };
-
-            if (lines[2] !== 'Enrolled') return null;
-
-            courseInfo.units = lines[3];
-            courseInfo.grading = lines[4];
-
-            return courseInfo;
-        }
-
-        //【Parser】parseSchedule ("TuTh 16:30 - 17:50")
-        function parseSchedule(scheduleString) {
-
-            if (!scheduleString || scheduleString === '') {
-                return { days: 'N/A', time: { start: 'N/A', end: 'N/A' } };
-            }
-
-            var parts = scheduleString.split(' ');
-
-            var days = parts[0];
-
-            var time = parts.slice(1).join(' ');
-            var startTime = time.split('-')[0];
-            var endTime = time.split('-')[1];
-
-            return { days: days, time: { start: startTime, end: endTime } };
-        }
-
-        //【Parser】parseDates ("01/09/2020 - 30/11/2020")
-        function parseDates(datesString) {
-            if (!datesString || datesString === '') {
-                return { start: 'N/A', end: 'N/A' };
-            }
-
-            var parts = datesString.split(' - ');
-
-            console.log("parts: ", parts); //dd/mm/yyyy
-            var start = new Date(parts[0].split('/').reverse().join('-'));
-            var end = new Date(parts[1].split('/').reverse().join('-'));
-
-
-            return { start: start, end: end };
-        }
-
-        //====================【Utils】====================
-
-        //【Utils】calculateFirstClassDate
-        function calculateFirstClassDate(start, dayOfWeek, time) {
-
-            if (dayOfWeek.length !== 2) {
-                dayOfWeek = dayOfWeek.slice(0, 2);
-            }
-
-            if (!dayMap[dayOfWeek]) {
-                return null;
-            }
-
-            // Find the first class day of the week
-            for (let d = new Date(start); ; d.setDate(d.getDate() + 1)) {
-                if (d.getDay() === dayMap[dayOfWeek]) {
-                    let startTime = new Date(d.toDateString() + ' ' + time.start);
-                    let endTime = new Date(d.toDateString() + ' ' + time.end);
-                    return { start: startTime, end: endTime };
-                }
-            }
-        }
-
-        //【Utils】 Convert multiple classes in a week to BYDAY that RRULE can recognize (MoWeFr -> MO,WE,FR)
-        function convertDays2RRULE(inputStr) {
-            let result = [];
-
-            inputStr = inputStr.trim().toUpperCase();
-
-            for (let i = 0; i < inputStr.length; i += 2) {
-                const day = inputStr.slice(i, i + 2);
-                result.push(day);
-            }
-
-            return result.join(',');
-        }
-
-        //====================【Render】====================
-
-
-        //【Render】addCourseToList
-        function addCourseToList(courseInfo) {
-            courseList.push(courseInfo);
-
-            var li = document.createElement('li');
-            li.innerHTML = `
-                <strong>${courseInfo.code} - ${courseInfo.name}</strong> ${courseInfo.section} ${courseInfo.component} (${courseInfo.classNbr})<br>
-                ${courseInfo.schedule} | ${courseInfo.room}<br>
-                Instructor(s): ${courseInfo.instructors}<br>
-                Dates: ${courseInfo.dates}
-            `;
-            document.getElementById('courseList').appendChild(li);
-        }
-
-
-        function showICS() {
-            var output = document.getElementById('outputText');
-            icsContent = classJSON2ICS(courseList, 'HKUST Course Schedule');
-            output.value = icsContent;
-        }
-
-        function downloadICSFile(icsContent, filename) {
-            const blob = new Blob([icsContent], { type: 'text/plain;charset=utf-8' });
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = filename.endsWith('.ics') ? filename : filename + '.ics';
-            a.click();
-            window.URL.revokeObjectURL(url);
-        }
 
         function showTutorial() {
             //image
@@ -468,12 +19,111 @@
             img.src = 'tutorial.png';
 
             //show
-            var win = window.open("", "Tutorial");
+            var win = window.open("", "Tutorial" , "width=800,height=600");
             win.document.write(img.outerHTML);
 
         }
-
     </script>
+
+    <style>
+        body {
+            /* width: 100%; */
+            /* height: 100vh; */
+            font-family: Arial, sans-serif;
+            /* max-width: 800px; */
+            margin: 0 auto;
+            padding: 20px;
+            /* center */
+            /* display: flex; */
+            flex-direction: column;
+            /* justify-content: center; */
+            /* align-items: center; */
+        }
+
+        h1 {
+            text-align: center;
+        }
+
+        .editable-div {
+            padding: 5px;
+            width: 100%;
+            min-height: 15vh;
+            max-height: 30vh;
+            margin: 5px;
+            height: 50%;
+            border: 2px solid #ccc;
+            border-radius: 10px;
+            /* padding: 10px; */
+            white-space: pre-wrap;
+
+            overflow: auto;
+            background-color: #f9f9f9;
+        }
+
+        button {
+            background-color: #000;
+            color: white;
+            padding: 10px 20px;
+            margin: 10px 5px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        div#courseInfo {
+            /* list-style-type: none; */
+            width: 100%;
+            min-height: 15vh;
+            max-height: 50vh;
+            margin: 5px;
+            padding: 0;
+            border: 2px solid #ccc;
+            border-radius: 10px;
+            overflow: auto;
+        }
+
+
+        div.center_div {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        [contentEditable=true]:empty:not(:focus):before {
+            content: attr(data-text);
+            color: #999
+        }
+
+        u {
+            cursor: pointer;
+            margin: 10px;
+        }
+    </style>
+</head>
+
+
+<body>
+    <h1>HKUST Course Schedule Converter</h1>
+
+    <div class="center_div">
+        <div id="editableDiv" class="editable-div" contenteditable="true"
+            data-text="Copy your class schedule (or full page) from [SIS -> Student Center -> Enroll -> my class schedule] and paste here."></div>
+    </div>
+    <u onclick="showTutorial()" target="_blank">Where to find my class schedule?</u><br>
+
+    <button id="extractBtn">Step 1: Extract Course Information</button>
+
+    <div class="center_div">
+        <div id="courseInfo">
+            <ul id="courses"></ul>
+        </div>
+    </div>
+
+    <button id="downloadBtn">Step 2: Download Course Information</button>
+
+
+
 </body>
+
 
 </html>
