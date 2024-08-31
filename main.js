@@ -135,19 +135,8 @@ function getClassDetails(classInfo) {
 
     // Instructors
     if (classInfo.instructor) {
-        // 使用 textContent 将字符串转义并输出
-        const outputElement = document.getElementById('output');
-        outputElement.textContent += classInfo.instructor + '|';
         //different platforms use different separators
-        if (classInfo.instructor.includes(',\n')) {
-            moreDetails.instructors = classInfo.instructor.split(',\n');
-        } else if (classInfo.instructor.includes(',\r\n')) {
-            moreDetails.instructors = classInfo.instructor.split(',\r\n');
-        } else if (classInfo.instructor.includes(',\r')) {
-            moreDetails.instructors = classInfo.instructor.split(',\r');
-        } else {
-            moreDetails.instructors = [classInfo.instructor];
-        }
+        moreDetails.instructors = classInfo.instructor.split(";"); //.map(x => x.trim().replace(/^,+|,+$/g, ''));
     }
 
     // Start & End Date
