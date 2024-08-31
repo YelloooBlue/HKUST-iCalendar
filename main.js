@@ -136,7 +136,7 @@ function getClassDetails(classInfo) {
     // Instructors
     if (classInfo.instructor) {
         //different platforms use different separators
-        moreDetails.instructors = classInfo.instructor.split(",\n"); //.map(x => x.trim().replace(/^,+|,+$/g, ''));
+        moreDetails.instructors = classInfo.instructor.split(";");
     }
 
     // Start & End Date
@@ -254,8 +254,8 @@ function classJSON2ICS(classInfo, calendarName) {
         var tmp = new Event();
 
         tmp.title = newClassName;
-        //tmp.description = `Instructor: ${aClass.instructor}`;
-        tmp.description = `Instructor: ${aClass.instructors.join(' ')}`;
+        tmp.description = `Instructor: ${aClass.instructor}`;
+        //tmp.description = `Instructor: ${aClass.instructors.join(' ')}`;
         tmp.location = aClass.room;
         tmp.uid = `${x}-${aClass.classNbr}`;
 
