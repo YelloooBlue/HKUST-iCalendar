@@ -309,5 +309,14 @@ function formatTime(date) {
     } else {
         return '000000';
     }
+} 
 
+function isWeChat() {
+    var ua = navigator.userAgent.toLowerCase();
+    return ua.indexOf('micromessenger') != -1;
+}
+
+
+if (isWeChat()) {
+    document.getElementById("wechatTip").style.display = "block";
 }
