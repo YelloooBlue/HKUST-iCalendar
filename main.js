@@ -43,6 +43,11 @@ function extractCourses() {
 
     classesInfo = convertCourses2Classes(coursesInfo);
     console.log(classesInfo);
+
+    gtag('event', 'button_click', {
+        'app_name': 'iCalendar_Converter',
+        'button_name': 'Extract'
+    });
 }
 
 function downloadCourses() {
@@ -55,6 +60,11 @@ function downloadCourses() {
     // console.log(icsContent);
 
     downloadICSFile(icsContent, "HKUST_Timetable.ics");
+
+    gtag('event', 'button_click', {
+        'app_name': 'iCalendar_Converter',
+        'button_name': 'Download'
+    });
 
 }
 
