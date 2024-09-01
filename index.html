@@ -68,6 +68,7 @@
             border: none;
             border-radius: 5px;
             cursor: pointer;
+            font-size: 16px;
         }
 
         div#courseInfo {
@@ -120,11 +121,14 @@
 <body>
     <h1>HKUST Course Schedule Converter</h1>
 
+    <p>Convert your HKUST or HKUST(SZ) class schedule to iCalendar file.</p>
+    <p>Tutorial👉 <a href = "guide.html" target="_blank">How to use?</a></p>
+
     <div class="center_div">
         <div id="editableDiv" class="editable-div" contenteditable="true"
             data-text="Copy your class schedule (or full page) from [SIS -> Student Center -> Enroll -> my class schedule] and paste here."></div>
     </div>
-    <u onclick="showTutorial()" target="_blank">Where to find my class schedule?</u><br>
+    <!-- 👉<u onclick="showTutorial()" target="_blank">Where to find my class schedule?</u><br> -->
 
     <button id="extractBtn">Step 1: Extract Course Information</button>
 
@@ -134,13 +138,14 @@
         </div>
     </div>
 
-    <button id="downloadBtn">Step 2: Download Course Information</button>
+    <button id="downloadBtn">Step 2: Download iCalendar File</button>
 
     <br>
     <br>
     <br>
     <div class="footer">
-        <a style="margin: 5px;" href="index_text.html">Pure Text Version (old)</a>
+        <!-- <a style="margin: 5px;" href="index_text.html">Pure Text Version (old)</a> -->
+        <a style="margin: 5px;" href="sponsor.html">Sponsor&Contact</a>
         <a style="margin: 5px;" href="https://github.com/yelloooblue/HKUST-iCalendar" target="_blank">GitHub</a>
         <span style="margin: 5px;">V1.0.15</span>
     </div>
