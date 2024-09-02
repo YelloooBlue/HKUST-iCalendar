@@ -2,27 +2,31 @@ export function extractCoursesJson() {
     //console.log("Extracting courses...");
 
     // Course List
-    var courseNum = 0;
+    var courses = getCoursesDiv_list();
+    //console.log(courses);
+    if (courses.length == 0) {
+        alert("No courses found.");
+        return;
+    }
+
     var coursesInfo = [];
-    while (true) {
-        var course = getCoursesDiv_byCourseNum(courseNum);
-        if (course == null) {
-            break;
-        }
+    courses.forEach(course => {
+
+        var course_index = course.id.split("$")[1];
 
         // Course Info
         var courseName = course.querySelector("td.PAGROUPDIVIDER").innerText.trim();
-        var status = document.getElementById("STATUS$" + courseNum).innerText.trim();
-        var units = document.getElementById("DERIVED_REGFRM1_UNT_TAKEN$" + courseNum).innerText.trim();
-        var grading = document.getElementById("GB_DESCR$" + courseNum).innerText.trim();
-        var grade = document.getElementById("DERIVED_REGFRM1_CRSE_GRADE_OFF$" + courseNum).innerText.trim();
+        var status = document.getElementById("STATUS$" + course_index).innerText.trim();
+        var units = document.getElementById("DERIVED_REGFRM1_UNT_TAKEN$" + course_index).innerText.trim();
+        var grading = document.getElementById("GB_DESCR$" + course_index).innerText.trim();
+        var grade = document.getElementById("DERIVED_REGFRM1_CRSE_GRADE_OFF$" + course_index).innerText.trim();
 
         // Class List
-        var classNum = 0;
+        var class_index = 0;
         var classesInfo = [];
         while (true) {
 
-            var classTr = getClassTr_byCourseNum_andRow(courseNum, classNum + 1);//！
+            var classTr = getClassTr_bycourse_index_andRow(course_index, class_index + 1);//! class index start from 1
             if (classTr == null) {
                 break;
             }
@@ -48,7 +52,7 @@ export function extractCoursesJson() {
             };
 
             classesInfo.push(classInfo);
-            classNum++;
+            class_index++;
         }
 
         var courseInfo = {
@@ -62,22 +66,40 @@ export function extractCoursesJson() {
         };
 
         coursesInfo.push(courseInfo);
-        courseNum++;
-    }
+    });
 
     return coursesInfo;
 }
 
 // Get course <Div> under <Table>
 // ID "win0divDERIVED_REGFRM1_DESCR20$0"
-function getCoursesDiv_byCourseNum(courseIndex) {
-    return document.getElementById("win0divDERIVED_REGFRM1_DESCR20$" + courseIndex);
+function getCoursesDiv_list() {
+    var courseDivs = document.querySelectorAll("div[id^='win0divDERIVED_REGFRM1_DESCR20$']");
+
+    //only one course case
+    if (courseDivs.length == 0 && document.querySelector("td.PAGROUPDIVIDER") != null) {
+        var parentTable = document.querySelector("table.PSGROUPBOXWBO");
+        var courseIndex = parentTable.querySelector("table[id^='ACE_DERIVED_REGFRM1_DESCR20$']").id.split("$")[1];
+        var fakeCourseDiv = document.createElement("div");
+        fakeCourseDiv.id = "win0divDERIVED_REGFRM1_DESCR20$" + courseIndex;
+        fakeCourseDiv.innerHTML = parentTable.outerHTML;
+        courseDivs = [fakeCourseDiv];
+    }
+
+    return courseDivs;
 }
+
+// Get course <Div> under <Table> [deprecated]
+// ID "win0divDERIVED_REGFRM1_DESCR20$0"
+// function getCoursesDiv_bycourse_index(courseIndex) {
+//     return document.getElementById("win0divDERIVED_REGFRM1_DESCR20$" + courseIndex);
+// }
 
 
 // Get class <Tr> under classes <Table>
 // ID "trCLASS_MTG_VW$0_row1" (start from 1)
-function getClassTr_byCourseNum_andRow(courseIndex, classIndex) {
+function getClassTr_bycourse_index_andRow(courseIndex, classIndex) {
     //console.log("trCLASS_MTG_VW$" + courseIndex + "_row" + classIndex);
     return document.getElementById("trCLASS_MTG_VW$" + courseIndex + "_row" + classIndex);
 }
+
