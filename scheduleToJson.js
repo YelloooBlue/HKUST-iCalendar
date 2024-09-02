@@ -32,8 +32,8 @@ export function extractCoursesJson() {
             var section = classTr.querySelector("span[id^='MTG_SECTION$']")?.innerText.trim();
             var components = classTr.querySelector("span[id^='MTG_COMP$']")?.innerText.trim();
             var daysTimes = classTr.querySelector("span[id^='MTG_SCHED$']")?.innerText.trim();
-            var room = classTr.querySelector("span[id^='MTG_LOC$']")?.innerText.trim();
-            var instructor_tmp = classTr.querySelector("span[id^='DERIVED_CLS_DTL_SSR_INSTR_LONG$']")?.innerHTML; //!
+            var room = classTr.querySelector("span[id^='MTG_LOC$']")?.innerText.trim().replace(',', '.'); //! room name may contain comma, it will cause error when parsing.
+            var instructor_tmp = classTr.querySelector("span[id^='DERIVED_CLS_DTL_SSR_INSTR_LONG$']")?.innerHTML; //! instructor name may contain <br> and &nbsp; tags, use innerHTML to get the full name.
             var instructor = instructor_tmp?.replace(/&nbsp;/g, " ").replace(/,\s*<br>/g, ";").replace(/<span.*?>/g, "").replace(/<\/span>/g, "").trim();
             var startEndDate = classTr.querySelector("span[id^='MTG_DATES$']")?.innerText.trim();
 
