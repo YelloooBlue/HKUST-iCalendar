@@ -4,3 +4,8 @@ Convert the class schedule in the SIS system of HKUST or HKUST(GZ) to iCalendar 
 👇
 
 [Online Convertor](https://hkust.fun)
+
+
+### ToDos
+- [ ] Support Vacation or Holiday classes
+- [ ] Classroom Location Details

@@ -309,6 +309,21 @@ function formatTime(date) {
             return date + '00';
         } else if (date.length === 5) {         // 08:30
             return date.replace(':', '') + '00';
+        } else if (date.includes('PM') || date.includes('AM')) {  // 4:30PM or 4:30AM
+            const isPM = date.includes('PM');
+            const timeStr = date.replace(/[AP]M/g, '').trim();
+            const [hours, minutes] = timeStr.split(':');
+            let hour24 = parseInt(hours);
+            
+            if (isPM && hour24 !== 12) {
+            hour24 += 12;
+            } else if (!isPM && hour24 === 12) {
+            hour24 = 0;
+            }
+            
+            const formattedHour = String(hour24).padStart(2, '0');
+            const formattedMinute = (minutes || '00').padStart(2, '0');
+            return formattedHour + formattedMinute + '00';
         }
     }
     else if (isDate(date)) {
